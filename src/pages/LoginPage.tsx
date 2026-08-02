@@ -13,6 +13,7 @@ export const LoginPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     loginMutation.mutate(
       { email, password, slug: slug.trim() || undefined },
       {

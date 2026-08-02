@@ -1,15 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { School as SchoolIcon, UserCheck, CreditCard, Building2, ShieldCheck, Users } from 'lucide-react';
+import { School as SchoolIcon, UserCheck, CreditCard, Building2, ShieldCheck, Users, GraduationCap, CalendarCheck, Award, KeyRound } from 'lucide-react';
 import { useSchoolStore } from '../store/useSchoolStore';
 import { useSchools } from '../hooks/useSchools';
 import { useAuthStore } from '../store/useAuthStore';
 import { Role } from '../types';
+import { ChangePasswordModal } from './ChangePasswordModal';
 
 export const Navbar: React.FC = () => {
   const { currentSchool, setCurrentSchool } = useSchoolStore();
   const { data: schools = [], isLoading } = useSchools();
   const { user, hasRole, hasAnyRole, logout } = useAuthStore();
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   useEffect(() => {
     if (schools.length > 0) {
@@ -103,7 +105,7 @@ export const Navbar: React.FC = () => {
             </NavLink>
           )}
 
-          {hasAnyRole([Role.SUPER_ADMIN, Role.DIRECTOR]) && (
+          {hasAnyRole([Role.DIRECTOR]) && (
             <NavLink
               to="/direction"
               className={({ isActive }) =>
@@ -116,6 +118,54 @@ export const Navbar: React.FC = () => {
             >
               <Users className="w-4 h-4" />
               <span>Direction</span>
+            </NavLink>
+          )}
+
+          {hasAnyRole([Role.SUPER_ADMIN, Role.DIRECTOR, Role.SECRETARY]) && (
+            <NavLink
+              to="/bulletins"
+              className={({ isActive }) =>
+                `flex items-center space-x-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
+                  isActive
+                    ? 'bg-emerald-700 text-white shadow-md shadow-emerald-700/20'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`
+              }
+            >
+              <Award className="w-4 h-4" />
+              <span>Bulletins</span>
+            </NavLink>
+          )}
+
+          {hasAnyRole([Role.SECRETARY, Role.TEACHER]) && (
+            <NavLink
+              to="/absences"
+              className={({ isActive }) =>
+                `flex items-center space-x-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
+                  isActive
+                    ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`
+              }
+            >
+              <CalendarCheck className="w-4 h-4" />
+              <span>Absences</span>
+            </NavLink>
+          )}
+
+          {hasAnyRole([Role.TEACHER]) && (
+            <NavLink
+              to="/enseignant"
+              className={({ isActive }) =>
+                `flex items-center space-x-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
+                  isActive
+                    ? 'bg-violet-600 text-white shadow-md shadow-violet-600/20'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`
+              }
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>Enseignant</span>
             </NavLink>
           )}
 
@@ -140,7 +190,14 @@ export const Navbar: React.FC = () => {
               <p className="text-xs font-semibold text-slate-200">{user?.email}</p>
               <p className="text-[10px] text-slate-400">{user?.roles.join(', ')}</p>
             </div>
-            <button 
+            <button
+              onClick={() => setShowPasswordModal(true)}
+              title="Changer mon mot de passe"
+              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+            >
+              <KeyRound className="w-4 h-4" />
+            </button>
+            <button
               onClick={logout}
               className="text-xs bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg transition-colors"
             >
@@ -149,6 +206,9 @@ export const Navbar: React.FC = () => {
           </div>
         </nav>
       </div>
+    {showPasswordModal && (
+        <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />
+      )}
     </header>
   );
 };

@@ -1,15 +1,52 @@
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { UserPlus, Clock, CheckCircle2, Ticket, Calendar } from "lucide-react";
+import {
+  UserPlus,
+  Clock,
+  CheckCircle2,
+  Ticket,
+  Calendar,
+  Search,
+  X,
+  History,
+} from "lucide-react";
 import { useSchoolStore } from "../store/useSchoolStore";
 import { useEnrollmentDraftStore } from "../store/useEnrollmentDraftStore";
 import { useAcademicYears, useClassRooms } from "../hooks/useClasses";
 import { useCreateEnrollment } from "../hooks/useEnrollments";
+import { useStudentSearch } from "../hooks/useStudents";
+import type { Student } from "../types";
 
 
 export const SecretariatForm: React.FC = () => {
   const { currentSchool } = useSchoolStore();
   const draft = useEnrollmentDraftStore();
+
+  // Réinscription : élève déjà connu de l'établissement. Tant qu'une fiche est
+  // sélectionnée, on envoie son identifiant plutôt que de recréer un élève.
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [studentQuery, setStudentQuery] = useState('');
+  const { data: foundStudents = [], isFetching: isSearching } = useStudentSearch(
+    studentQuery,
+    currentSchool?.id,
+  );
+
+  const pickStudent = (student: Student) => {
+    setSelectedStudent(student);
+    setStudentQuery('');
+    // Les champs restent affichés en lecture seule, alimentés par la fiche
+    draft.setDraft({
+      firstName: student.firstName,
+      lastName: student.lastName,
+      parentPhone: student.parentPhone,
+    });
+  };
+
+  const clearStudent = () => {
+    setSelectedStudent(null);
+    draft.setDraft({ firstName: '', lastName: '', parentPhone: '+225' });
+    setIsoDate('');
+  };
 
   const { data: classRooms = [] } = useClassRooms();
   const { data: academicYears = [] } = useAcademicYears();
@@ -29,15 +66,30 @@ export const SecretariatForm: React.FC = () => {
     return "";
   });
 
+  /**
+   * Le brouillon est conservé en sessionStorage. Une classe supprimée ou
+   * renommée depuis y laisserait un identifiant périmé, envoyé tel quel à
+   * l'API — d'où un refus incompréhensible pour la secrétaire, portant sur un
+   * identifiant qu'elle ne voit nulle part.
+   *
+   * La sélection mémorisée est donc confrontée à la liste réellement chargée,
+   * et remplacée par le premier élément valide si elle n'y figure plus.
+   */
   useEffect(() => {
-    if (classRooms.length > 0 && !draft.selectedClassId) {
+    if (classRooms.length === 0) return;
+    const stillExists = classRooms.some((c) => c.id === draft.selectedClassId);
+    if (!stillExists) {
       draft.setDraft({ selectedClassId: classRooms[0].id });
     }
   }, [classRooms, draft]);
 
   useEffect(() => {
-    if (academicYears.length > 0 && !draft.selectedYearId) {
-      draft.setDraft({ selectedYearId: academicYears[0].id });
+    if (academicYears.length === 0) return;
+    const stillExists = academicYears.some((y) => y.id === draft.selectedYearId);
+    if (!stillExists) {
+      // L'année active est le choix par défaut le plus sensé
+      const preferred = academicYears.find((y) => y.isActive) ?? academicYears[0];
+      draft.setDraft({ selectedYearId: preferred.id });
     }
   }, [academicYears, draft]);
 
@@ -64,7 +116,7 @@ export const SecretariatForm: React.FC = () => {
       return;
     }
 
-    if (!draft.birthDay) {
+    if (!selectedStudent && !draft.birthDay) {
       toast.error("Veuillez sélectionner la date de naissance");
       return;
     }
@@ -74,12 +126,17 @@ export const SecretariatForm: React.FC = () => {
         schoolId: currentSchool.id,
         classRoomId: draft.selectedClassId,
         academicYearId: draft.selectedYearId,
-        studentData: {
-          firstName: draft.firstName,
-          lastName: draft.lastName,
-          birthDay: draft.birthDay,
-          parentPhone: draft.parentPhone,
-        },
+        // Réinscription sur une fiche existante, ou création d'un nouvel élève
+        ...(selectedStudent
+          ? { studentId: selectedStudent.id }
+          : {
+              studentData: {
+                firstName: draft.firstName,
+                lastName: draft.lastName,
+                birthDay: draft.birthDay,
+                parentPhone: draft.parentPhone,
+              },
+            }),
       },
       {
         onSuccess: (data) => {
@@ -88,10 +145,45 @@ export const SecretariatForm: React.FC = () => {
             `Ticket d'inscription ${data.reference} généré avec succès (valable 72h)`,
           );
           draft.resetDraft();
+          setSelectedStudent(null);
+          setStudentQuery("");
           setIsoDate("");
         },
         onError: (err: any) => {
-          const msg = err.response?.data?.message;
+          const payload = err.response?.data;
+          const msg = payload?.message;
+
+          // Doublon détecté : l'API renvoie la fiche existante, on propose
+          // au secrétariat de basculer dessus plutôt que de recréer un élève.
+          if (err.response?.status === 409 && payload?.existingStudent) {
+            const existing = payload.existingStudent as Student;
+            toast(
+              (toastItem) => (
+                <div className="text-sm">
+                  <p className="font-bold text-slate-900 mb-1">
+                    Élève déjà enregistré
+                  </p>
+                  <p className="text-xs text-slate-600 mb-2">
+                    {existing.firstName} {existing.lastName} possède déjà une
+                    fiche dans cet établissement. Réutilisez-la pour conserver
+                    son historique.
+                  </p>
+                  <button
+                    onClick={() => {
+                      pickStudent(existing);
+                      toast.dismiss(toastItem.id);
+                    }}
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg"
+                  >
+                    Utiliser sa fiche existante
+                  </button>
+                </div>
+              ),
+              { duration: 10000 },
+            );
+            return;
+          }
+
           toast.error(
             Array.isArray(msg) ? msg[0] : msg || "Erreur lors de l’inscription",
           );
@@ -99,6 +191,9 @@ export const SecretariatForm: React.FC = () => {
       },
     );
   };
+
+
+  console.log("log de classeRoom", classRooms)
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -124,6 +219,89 @@ export const SecretariatForm: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Réinscription : retrouver un élève déjà connu */}
+          {selectedStudent ? (
+            <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-start justify-between gap-3">
+              <div className="flex items-start space-x-2.5 min-w-0">
+                <History className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-slate-900">
+                    Réinscription — {selectedStudent.firstName}{' '}
+                    {selectedStudent.lastName}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Né(e) le{' '}
+                    {new Date(selectedStudent.birthDay).toLocaleDateString('fr-FR')}{' '}
+                    · {selectedStudent.parentPhone}
+                  </p>
+                  <p className="text-[11px] text-indigo-700 mt-1">
+                    La fiche existante est réutilisée : l'historique de l'élève
+                    est conservé.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={clearStudent}
+                title="Saisir un nouvel élève à la place"
+                className="p-1.5 rounded-lg hover:bg-indigo-100 text-indigo-600 flex-shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="relative">
+              <label className="block text-sm font-semibold text-slate-700 mb-1">
+                Élève déjà inscrit ?{' '}
+                <span className="text-slate-400 font-normal">
+                  (recherche par nom ou téléphone)
+                </span>
+              </label>
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={studentQuery}
+                  onChange={(e) => setStudentQuery(e.target.value)}
+                  placeholder="Rechercher pour une réinscription..."
+                  className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                />
+              </div>
+
+              {studentQuery.trim().length >= 2 && (
+                <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-56 overflow-y-auto">
+                  {isSearching ? (
+                    <p className="px-3 py-2.5 text-xs text-slate-400">
+                      Recherche...
+                    </p>
+                  ) : foundStudents.length === 0 ? (
+                    <p className="px-3 py-2.5 text-xs text-slate-400">
+                      Aucun élève trouvé — remplissez le formulaire ci-dessous
+                      pour une première inscription.
+                    </p>
+                  ) : (
+                    foundStudents.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => pickStudent(s)}
+                        className="w-full text-left px-3 py-2.5 hover:bg-indigo-50 border-b border-slate-100 last:border-0"
+                      >
+                        <span className="text-sm font-semibold text-slate-800">
+                          {s.firstName} {s.lastName}
+                        </span>
+                        <span className="block text-[11px] text-slate-400 font-mono">
+                          {new Date(s.birthDay).toLocaleDateString('fr-FR')} ·{' '}
+                          {s.parentPhone}
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">
@@ -131,7 +309,8 @@ export const SecretariatForm: React.FC = () => {
               </label>
               <input
                 type="text"
-                required
+                required={!selectedStudent}
+                disabled={!!selectedStudent}
                 placeholder="Ex: Kouassi"
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                 value={draft.lastName}
@@ -145,7 +324,8 @@ export const SecretariatForm: React.FC = () => {
               </label>
               <input
                 type="text"
-                required
+                required={!selectedStudent}
+                disabled={!!selectedStudent}
                 placeholder="Ex: Jean"
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                 value={draft.firstName}
@@ -162,7 +342,8 @@ export const SecretariatForm: React.FC = () => {
               </label>
               <input
                 type="date"
-                required
+                required={!selectedStudent}
+                disabled={!!selectedStudent}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-white cursor-pointer"
                 value={isoDate}
                 onChange={handleDateChange}
@@ -180,7 +361,8 @@ export const SecretariatForm: React.FC = () => {
               </label>
               <input
                 type="text"
-                required
+                required={!selectedStudent}
+                disabled={!!selectedStudent}
                 placeholder="+2250700000000"
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm font-mono"
                 value={draft.parentPhone}

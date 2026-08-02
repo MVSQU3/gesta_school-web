@@ -1,24 +1,35 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import { ShieldCheck, Plus, Building2, Edit2, Trash2, Phone, MapPin, X, Check } from 'lucide-react';
+import { ShieldCheck, Plus, Building2, Edit2, Trash2, Phone, MapPin, X, Check, UserPlus, Users } from 'lucide-react';
 import { useCreateSchool, useDeleteSchool, useSchools, useUpdateSchool } from '../hooks/useSchools';
-import type { School } from '../types';
+import { useAdminCreateUser } from '../hooks/useUsers';
+import { SchoolStaffPanel } from '../components/SchoolStaffPanel';
+import { Role, type School } from '../types';
 
 export const AdminSchoolsPage: React.FC = () => {
   const { data: schools = [], isLoading } = useSchools();
   const createSchoolMutation = useCreateSchool();
   const updateSchoolMutation = useUpdateSchool();
   const deleteSchoolMutation = useDeleteSchool();
+  const createUserMutation = useAdminCreateUser();
 
   // Modals & Form States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [selectedSchoolForUser, setSelectedSchoolForUser] = useState<School | null>(null);
+  const [staffSchool, setStaffSchool] = useState<School | null>(null);
 
-  // Form Fields
+  // Form Fields — école
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
+
+  // Form Fields — utilisateur
+  const [userEmail, setUserEmail] = useState('');
+  const [userPassword, setUserPassword] = useState('');
+  const [userRole, setUserRole] = useState<Role>(Role.DIRECTOR);
 
   const resetForm = () => {
     setName('');
@@ -26,6 +37,13 @@ export const AdminSchoolsPage: React.FC = () => {
     setAddress('');
     setPhone('');
     setEditingSchool(null);
+  };
+
+  const resetUserForm = () => {
+    setUserEmail('');
+    setUserPassword('');
+    setUserRole(Role.DIRECTOR);
+    setSelectedSchoolForUser(null);
   };
 
   const handleOpenCreate = () => {
@@ -98,6 +116,37 @@ export const AdminSchoolsPage: React.FC = () => {
         },
       });
     }
+  };
+
+  const handleOpenUserModal = (school: School) => {
+    resetUserForm();
+    setSelectedSchoolForUser(school);
+    setIsUserModalOpen(true);
+  };
+
+  const handleCreateUserSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSchoolForUser) return;
+    createUserMutation.mutate(
+      {
+        email: userEmail,
+        password: userPassword,
+        roles: [userRole],
+        schoolId: selectedSchoolForUser.id,
+      },
+      {
+        onSuccess: () => {
+          const roleLabel = userRole === Role.DIRECTOR ? 'Directeur' : userRole === Role.SECRETARY ? 'Secrétaire' : 'Comptable';
+          toast.success(`${roleLabel} créé(e) pour "${selectedSchoolForUser.name}" !`);
+          setIsUserModalOpen(false);
+          resetUserForm();
+        },
+        onError: (err: any) => {
+          const msg = err.response?.data?.message;
+          toast.error(Array.isArray(msg) ? msg[0] : msg || 'Erreur lors de la création');
+        },
+      }
+    );
   };
 
   return (
@@ -229,6 +278,22 @@ export const AdminSchoolsPage: React.FC = () => {
                     </td>
 
                     <td className="py-4 px-4 text-right space-x-2">
+                      <button
+                        onClick={() => setStaffSchool(s)}
+                        className="p-2 bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 rounded-xl transition-colors inline-flex items-center justify-center"
+                        title="Personnel et mots de passe"
+                      >
+                        <Users className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => handleOpenUserModal(s)}
+                        className="p-2 bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 rounded-xl transition-colors inline-flex items-center justify-center"
+                        title="Créer un utilisateur pour cet établissement"
+                      >
+                        <UserPlus className="w-4 h-4" />
+                      </button>
+
                       <button
                         onClick={() => handleOpenEdit(s)}
                         className="p-2 bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 rounded-xl transition-colors inline-flex items-center justify-center"
@@ -417,6 +482,93 @@ export const AdminSchoolsPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* MODAL CRÉATION UTILISATEUR STAFF */}
+      {isUserModalOpen && selectedSchoolForUser && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 relative border border-slate-100 animate-in fade-in zoom-in duration-200">
+            <button
+              onClick={() => { setIsUserModalOpen(false); resetUserForm(); }}
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center space-x-3 mb-1">
+              <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+                <UserPlus className="w-5 h-5" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">Créer un Utilisateur</h3>
+            </div>
+            <p className="text-xs text-slate-500 mb-6">
+              Pour l'établissement :
+              <span className="font-bold text-indigo-600 ml-1">{selectedSchoolForUser.name}</span>
+              <span className="font-mono text-slate-400 ml-1">({selectedSchoolForUser.slug})</span>
+            </p>
+
+            <form onSubmit={handleCreateUserSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Rôle *</label>
+                <select
+                  required
+                  value={userRole}
+                  onChange={(e) => setUserRole(e.target.value as Role)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 text-sm bg-white"
+                >
+                  <option value={Role.DIRECTOR}>Directeur</option>
+                  <option value={Role.SECRETARY}>Secrétaire</option>
+                  <option value={Role.ACCOUNTANT}>Comptable</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Email *</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="Ex: direction@ecole.com"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 text-sm"
+                  value={userEmail}
+                  onChange={(e) => setUserEmail(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Mot de passe *</label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  placeholder="Minimum 6 caractères"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 text-sm"
+                  value={userPassword}
+                  onChange={(e) => setUserPassword(e.target.value)}
+                />
+              </div>
+
+              <div className="pt-2 flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => { setIsUserModalOpen(false); resetUserForm(); }}
+                  className="w-1/2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={createUserMutation.isPending}
+                  className="w-1/2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm shadow-lg shadow-emerald-600/30 disabled:opacity-50"
+                >
+                  {createUserMutation.isPending ? 'Création...' : 'Créer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {staffSchool && (
+        <SchoolStaffPanel school={staffSchool} onClose={() => setStaffSchool(null)} />
+      )}
+
     </div>
   );
 };

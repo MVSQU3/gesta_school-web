@@ -7,8 +7,12 @@ import { SecretariatPage } from './pages/SecretariatPage';
 import { CaissePage } from './pages/CaissePage';
 import { AdminSchoolsPage } from './pages/AdminSchoolsPage';
 import { DirectionPage } from './pages/DirectionPage';
+import { TeacherPage } from './pages/TeacherPage';
+import { AbsencesPage } from './pages/AbsencesPage';
+import { BulletinsPage } from './pages/BulletinsPage';
 import { LoginPage } from './pages/LoginPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { ForcePasswordChange } from './components/ForcePasswordChange';
 import { useAuthStore } from './store/useAuthStore';
 import { Role } from './types';
 
@@ -25,7 +29,18 @@ export const App: React.FC = () => {
 };
 
 const AppContent: React.FC = () => {
-  const { token } = useAuthStore();
+  const { token, user } = useAuthStore();
+
+  // Mot de passe provisoire : l'application entière est remplacée par l'écran
+  // de changement. Le serveur refuse de toute façon toute autre route.
+  if (token && user?.mustChangePassword) {
+    return (
+      <>
+        <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+        <ForcePasswordChange />
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans">
@@ -61,13 +76,49 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             } 
           />
-          <Route 
-            path="/direction" 
+          <Route
+            path="/direction"
             element={
-              <ProtectedRoute allowedRoles={[Role.SUPER_ADMIN, Role.DIRECTOR]}>
+              <ProtectedRoute allowedRoles={[Role.DIRECTOR]}>
                 <DirectionPage />
               </ProtectedRoute>
-            } 
+            }
+          />
+
+          <Route
+            path="/bulletins"
+            element={
+              <ProtectedRoute
+                allowedRoles={[Role.SUPER_ADMIN, Role.DIRECTOR, Role.SECRETARY]}
+              >
+                <BulletinsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/absences"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  Role.SUPER_ADMIN,
+                  Role.DIRECTOR,
+                  Role.SECRETARY,
+                  Role.TEACHER,
+                ]}
+              >
+                <AbsencesPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/enseignant"
+            element={
+              <ProtectedRoute allowedRoles={[Role.SUPER_ADMIN, Role.DIRECTOR, Role.TEACHER]}>
+                <TeacherPage />
+              </ProtectedRoute>
+            }
           />
         </Routes>
       </main>

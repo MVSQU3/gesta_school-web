@@ -28,7 +28,7 @@ export function useCreateSchool() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: CreateSchoolInput) => {
-      const { data } = await apiClient.post<School>('/schools', input);
+      const { data } = await apiClient.post<School>('/admin/create-school', input);
       return data;
     },
     onSuccess: () => {

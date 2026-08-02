@@ -1,19 +1,76 @@
 @import "tailwindcss";
 
 @media print {
+  @page {
+    margin: 12mm;
+  }
+
+  /* Seule la zone imprimable reste visible : le reçu de caisse, ou le
+     journal de caisse selon l'écran depuis lequel on lance l'impression. */
   body * {
     visibility: hidden;
   }
-  #receipt-printable, #receipt-printable * {
+
+  #receipt-printable,
+  #receipt-printable *,
+  #journal-printable,
+  #journal-printable *,
+  #bulletin-printable,
+  #bulletin-printable * {
     visibility: visible;
   }
+
+  /* Ancrées en haut plutôt que centrées verticalement : un reçu long ou un
+     journal de plusieurs pages ne doit pas être rogné. */
   #receipt-printable {
     position: absolute;
     left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
+    top: 0;
+    transform: translateX(-50%);
     width: 100%;
     max-width: 450px;
-    margin: 0 auto;
+  }
+
+  #journal-printable {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  /* Les tableaux ne doivent pas couper une ligne entre deux pages. */
+  #journal-printable tr {
+    break-inside: avoid;
+  }
+
+  #journal-printable thead {
+    display: table-header-group;
+  }
+
+  /* Bulletins. L'impression en lot empile un bulletin par page : chacun est
+     ancré en haut, et `break-after-page` sépare les élèves. */
+  #bulletin-printable {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    display: block !important;
+  }
+
+  .bulletin-page {
+    break-inside: avoid;
+    padding: 0;
+  }
+
+  .break-after-page {
+    break-after: page;
+  }
+
+  #bulletin-printable table {
+    break-inside: auto;
+  }
+
+  #bulletin-printable tr {
+    break-inside: avoid;
   }
 }

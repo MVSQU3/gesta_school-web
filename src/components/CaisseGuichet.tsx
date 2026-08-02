@@ -1,17 +1,30 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import { Search, CreditCard, AlertCircle, CheckCircle, Clock } from 'lucide-react';
-import { EnrollmentStatus, type Enrollment, type Payment } from '../types';
+import { Search, CreditCard, AlertCircle, CheckCircle, Clock, Wallet } from 'lucide-react';
+import {
+  EnrollmentStatus,
+  PaymentMethod,
+  PAYMENT_METHOD_LABELS,
+  type Enrollment,
+  type Payment,
+} from '../types';
 import { ReceiptModal } from './ReceiptModal';
 import { useProcessPayment } from '../hooks/usePayments';
 import { useSearchEnrollmentByRef } from '../hooks/useEnrollments';
+import { useSchoolStore } from '../store/useSchoolStore';
+
+const formatFcfa = (value: number) => `${Number(value).toLocaleString('fr-FR')} FCFA`;
 
 export const CaisseGuichet: React.FC = () => {
   const [reference, setReference] = useState('');
-  const [amount, setAmount] = useState('50000');
+  const [amount, setAmount] = useState('');
+  const [method, setMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [searching, setSearching] = useState(false);
   const [completedPayment, setCompletedPayment] = useState<Payment | null>(null);
+
+  // schoolId du currentSchool pour le SUPER_ADMIN (les autres rôles utilisent le JWT)
+  const { currentSchool } = useSchoolStore();
 
   const processPaymentMutation = useProcessPayment();
   const searchEnrollmentMutation = useSearchEnrollmentByRef();
@@ -23,9 +36,15 @@ export const CaisseGuichet: React.FC = () => {
     setSearching(true);
     setEnrollment(null);
 
-    searchEnrollmentMutation.mutate(reference, {
+    searchEnrollmentMutation.mutate(
+      { reference, schoolId: currentSchool?.id },
+      {
       onSuccess: (data) => {
         setEnrollment(data);
+        // Pré-remplir avec le solde restant dû plutôt qu'un montant arbitraire.
+        // Le caissier reste libre de saisir un versement partiel inférieur.
+        const remaining = data.balanceInfo?.balance ?? 0;
+        setAmount(remaining > 0 ? String(remaining) : '');
         setSearching(false);
       },
       onError: () => {
@@ -42,13 +61,21 @@ export const CaisseGuichet: React.FC = () => {
       {
         reference: enrollment.reference,
         amount: Number(amount),
+        method,
+        schoolId: currentSchool?.id,
       },
       {
         onSuccess: (data) => {
           setCompletedPayment(data);
-          toast.success(`Encaissement validé ! Reçu #${data.receiptNumber}`);
+          const rest = data.balanceAfter?.balance ?? 0;
+          toast.success(
+            rest > 0
+              ? `Versement encaissé (reçu #${data.receiptNumber}). Reste à payer : ${formatFcfa(rest)}`
+              : `Scolarité intégralement réglée ! Reçu #${data.receiptNumber}`,
+          );
           setEnrollment(null);
           setReference('');
+          setAmount('');
         },
         onError: (err: any) => {
           const msg = err.response?.data?.message;
@@ -58,9 +85,17 @@ export const CaisseGuichet: React.FC = () => {
     );
   };
 
+  const balanceInfo = enrollment?.balanceInfo;
+
+  // Un dossier ayant déjà reçu un versement n'expire plus : la place est acquise,
+  // seul le solde reste à recouvrer. Seuls les dossiers sans aucun versement
+  // sont soumis au délai de 72h.
   const isExpired =
     enrollment?.status === EnrollmentStatus.EXPIRED ||
-    (enrollment && new Date(enrollment.expiresAt) < new Date());
+    (enrollment?.status === EnrollmentStatus.PENDING_PAYMENT &&
+      new Date(enrollment.expiresAt) < new Date());
+
+  const isPartiallyPaid = enrollment?.status === EnrollmentStatus.PARTIALLY_PAID;
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -111,7 +146,12 @@ export const CaisseGuichet: React.FC = () => {
             {enrollment.status === EnrollmentStatus.ENROLLED ? (
               <span className="px-3.5 py-1.5 bg-emerald-100 text-emerald-700 font-bold text-xs rounded-full flex items-center space-x-1">
                 <CheckCircle className="w-4 h-4 mr-1" />
-                DÉJÀ ENCAISSÉ
+                INTÉGRALEMENT RÉGLÉ
+              </span>
+            ) : isPartiallyPaid ? (
+              <span className="px-3.5 py-1.5 bg-sky-100 text-sky-700 font-bold text-xs rounded-full flex items-center space-x-1">
+                <Wallet className="w-4 h-4 mr-1" />
+                PARTIELLEMENT RÉGLÉ
               </span>
             ) : isExpired ? (
               <span className="px-3.5 py-1.5 bg-red-100 text-red-700 font-bold text-xs rounded-full flex items-center space-x-1">
@@ -153,6 +193,53 @@ export const CaisseGuichet: React.FC = () => {
             </div>
           </div>
 
+          {/* Situation financière du dossier */}
+          {balanceInfo && (
+            <div className="rounded-2xl border border-slate-200 overflow-hidden">
+              <div className="grid grid-cols-3 divide-x divide-slate-200 text-center">
+                <div className="p-4">
+                  <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold block">
+                    Total dû
+                  </span>
+                  <span className="font-mono font-bold text-slate-800 text-base">
+                    {balanceInfo.totalDue > 0 ? formatFcfa(balanceInfo.totalDue) : '—'}
+                  </span>
+                </div>
+                <div className="p-4">
+                  <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold block">
+                    Déjà versé
+                  </span>
+                  <span className="font-mono font-bold text-sky-700 text-base">
+                    {formatFcfa(balanceInfo.amountPaid)}
+                  </span>
+                </div>
+                <div className="p-4 bg-slate-50">
+                  <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold block">
+                    Reste à payer
+                  </span>
+                  <span
+                    className={`font-mono font-black text-base ${
+                      balanceInfo.balance > 0 ? 'text-red-600' : 'text-emerald-600'
+                    }`}
+                  >
+                    {formatFcfa(balanceInfo.balance)}
+                  </span>
+                </div>
+              </div>
+
+              {balanceInfo.totalDue === 0 && (
+                <div className="px-4 py-2.5 bg-amber-50 border-t border-amber-200 text-[11px] text-amber-800 flex items-start space-x-2">
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                  <span>
+                    Aucun tarif n'est défini pour la classe{' '}
+                    <strong>{enrollment.classRoom?.name}</strong>. Le montant n'est donc pas
+                    contrôlé — demandez à la direction de renseigner les frais de scolarité.
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Bloqueur en cas d'expiration */}
           {isExpired ? (
             <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start space-x-3 text-red-700 text-sm">
@@ -172,20 +259,69 @@ export const CaisseGuichet: React.FC = () => {
           ) : (
             /* Zone d'Encaissement Valide */
             <div className="pt-2 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Montant à Encaisser (FCFA) *</label>
-                <input
-                  type="number"
-                  required
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-lg font-bold font-mono text-emerald-700"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">
+                    Montant du versement (FCFA) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    max={
+                      balanceInfo && balanceInfo.totalDue > 0
+                        ? balanceInfo.balance
+                        : undefined
+                    }
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-lg font-bold font-mono text-emerald-700"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
+                  {balanceInfo && balanceInfo.totalDue > 0 && (
+                    <p className="mt-1 text-xs text-slate-400">
+                      Un montant inférieur au solde enregistre un versement partiel ; le
+                      reliquat restera dû.
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">
+                    Mode de paiement *
+                  </label>
+                  <select
+                    value={method}
+                    onChange={(e) => setMethod(e.target.value as PaymentMethod)}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm bg-white h-[54px]"
+                  >
+                    {Object.values(PaymentMethod).map((m) => (
+                      <option key={m} value={m}>
+                        {PAYMENT_METHOD_LABELS[m]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
+
+              {/* Aperçu du solde après opération */}
+              {balanceInfo && balanceInfo.totalDue > 0 && Number(amount) > 0 && (
+                <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
+                  <span>Solde après ce versement :</span>
+                  <span
+                    className={`font-mono font-bold ${
+                      balanceInfo.balance - Number(amount) > 0
+                        ? 'text-red-600'
+                        : 'text-emerald-600'
+                    }`}
+                  >
+                    {formatFcfa(Math.max(balanceInfo.balance - Number(amount), 0))}
+                  </span>
+                </div>
+              )}
 
               <button
                 onClick={handlePay}
-                disabled={processPaymentMutation.isPending}
+                disabled={processPaymentMutation.isPending || !amount}
                 className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-xl shadow-emerald-600/30 transition-all flex items-center justify-center space-x-2 text-base disabled:opacity-50"
               >
                 {processPaymentMutation.isPending ? (
@@ -193,7 +329,7 @@ export const CaisseGuichet: React.FC = () => {
                 ) : (
                   <>
                     <CreditCard className="w-5 h-5" />
-                    <span>Valider le Paiement & Imprimer le Reçu</span>
+                    <span>Encaisser le Versement & Imprimer le Reçu</span>
                   </>
                 )}
               </button>
