@@ -9,7 +9,7 @@ interface Props {
 }
 
 export const ChangePasswordModal: React.FC<Props> = ({ onClose }) => {
-  const { token, user, setAuth } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -29,13 +29,11 @@ export const ChangePasswordModal: React.FC<Props> = ({ onClose }) => {
     setPending(true);
     try {
       const { data } = await apiClient.patch<{
-        access_token: string;
         message: string;
       }>('/auth/password', { currentPassword, newPassword });
 
-      // Le changement révoque les jetons antérieurs : on remplace aussitôt
-      // celui de cette session, sinon l'utilisateur se déconnecte lui-même.
-      if (user) setAuth(data.access_token, user);
+      // Le changement révoque les sessions antérieures ; le serveur a déjà
+      // repose un cookie neuf sur cette réponse, rien à faire de plus ici.
 
       toast.success(data.message);
       onClose();
@@ -48,7 +46,7 @@ export const ChangePasswordModal: React.FC<Props> = ({ onClose }) => {
   };
 
   // Le jeton est nécessaire : la modale n'est ouverte que connecté
-  if (!token) return null;
+  if (!user) return null;
 
   return (
     <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 z-50">

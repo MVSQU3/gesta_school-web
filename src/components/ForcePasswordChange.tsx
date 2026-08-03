@@ -11,7 +11,7 @@ import { useAuthStore } from '../store/useAuthStore';
  * route dans cet état.
  */
 export const ForcePasswordChange: React.FC = () => {
-  const { user, setAuth, logout } = useAuthStore();
+  const { user, setUser, logout } = useAuthStore();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -30,14 +30,13 @@ export const ForcePasswordChange: React.FC = () => {
 
     setPending(true);
     try {
-      const { data } = await apiClient.patch<{
-        access_token: string;
+      await apiClient.patch<{
         message: string;
       }>('/auth/password', { currentPassword, newPassword });
 
-      // Le drapeau est levé côté serveur : on le retire du profil local et on
-      // remplace le jeton, révoqué par le changement.
-      setAuth(data.access_token, { ...user, mustChangePassword: false });
+      // Le drapeau est levé côté serveur, et le cookie renouvelé sur cette
+      // même réponse : il ne reste qu'à mettre le profil local à jour.
+      setUser({ ...user, mustChangePassword: false });
       toast.success('Mot de passe défini. Bienvenue !');
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Erreur lors du changement';

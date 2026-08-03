@@ -9,13 +9,17 @@ interface LoginInput {
   slug?: string;
 }
 
+/**
+ * Le corps contient encore `access_token`, destiné aux clients non-navigateur.
+ * L'interface l'ignore : sa session tient au cookie httpOnly posé par la même
+ * réponse, hors de portée du JavaScript.
+ */
 interface LoginResponse {
-  access_token: string;
   user: User;
 }
 
 export function useLogin() {
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const setUser = useAuthStore((state) => state.setUser);
 
   return useMutation({
     mutationFn: async (input: LoginInput) => {
@@ -23,7 +27,7 @@ export function useLogin() {
       return data;
     },
     onSuccess: (data) => {
-      setAuth(data.access_token, data.user);
+      setUser(data.user);
     },
   });
 }

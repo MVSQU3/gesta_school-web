@@ -14,6 +14,7 @@ import { LoginPage } from './pages/LoginPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ForcePasswordChange } from './components/ForcePasswordChange';
 import { useAuthStore } from './store/useAuthStore';
+import { useSessionRestore } from './hooks/useSessionRestore';
 import { Role } from './types';
 import { queryClient } from './api/queryClient';
 
@@ -29,11 +30,14 @@ export const App: React.FC = () => {
 };
 
 const AppContent: React.FC = () => {
-  const { token, user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  // Interroge /auth/me au demarrage : le jeton etant invisible, seul le
+  // serveur peut confirmer qui est connecte.
+  useSessionRestore();
 
   // Mot de passe provisoire : l'application entière est remplacée par l'écran
   // de changement. Le serveur refuse de toute façon toute autre route.
-  if (token && user?.mustChangePassword) {
+  if (user?.mustChangePassword) {
     return (
       <>
         <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
@@ -46,7 +50,7 @@ const AppContent: React.FC = () => {
     <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans">
       <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
 
-      {token && <Navbar />}
+      {user && <Navbar />}
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         <Routes>
