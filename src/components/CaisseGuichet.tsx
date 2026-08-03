@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import { Search, CreditCard, AlertCircle, CheckCircle, Clock, Wallet } from 'lucide-react';
+import {
+  Search,
+  CreditCard,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  Wallet,
+  UserSearch,
+} from 'lucide-react';
 import {
   EnrollmentStatus,
   PaymentMethod,
@@ -10,7 +18,10 @@ import {
 } from '../types';
 import { ReceiptModal } from './ReceiptModal';
 import { useProcessPayment } from '../hooks/usePayments';
-import { useSearchEnrollmentByRef } from '../hooks/useEnrollments';
+import {
+  useEnrollmentsList,
+  useSearchEnrollmentByRef,
+} from '../hooks/useEnrollments';
 import { useSchoolStore } from '../store/useSchoolStore';
 
 const formatFcfa = (value: number) => `${Number(value).toLocaleString('fr-FR')} FCFA`;
@@ -29,29 +40,56 @@ export const CaisseGuichet: React.FC = () => {
   const processPaymentMutation = useProcessPayment();
   const searchEnrollmentMutation = useSearchEnrollmentByRef();
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reference.trim()) return;
+  /**
+   * Recherche de secours, par nom d'élève ou numéro du parent.
+   *
+   * Un parent qui revient verser une tranche en cours d'année n'a le plus
+   * souvent plus son papier : sans cette recherche, le caissier ne peut pas
+   * retrouver le dossier et doit renvoyer la famille au secrétariat.
+   * La requête ne part qu'à partir de deux caractères, pour ne pas déverser
+   * toute la base au premier clic.
+   */
+  const [lookup, setLookup] = useState('');
+  const trimmedLookup = lookup.trim();
+  const { data: matches, isFetching: isLooking } = useEnrollmentsList(
+    { search: trimmedLookup, limit: 8, schoolId: currentSchool?.id },
+    { enabled: trimmedLookup.length >= 2 },
+  );
 
+  const loadByReference = (ref: string) => {
     setSearching(true);
     setEnrollment(null);
 
     searchEnrollmentMutation.mutate(
-      { reference, schoolId: currentSchool?.id },
+      { reference: ref, schoolId: currentSchool?.id },
       {
-      onSuccess: (data) => {
-        setEnrollment(data);
-        // Pré-remplir avec le solde restant dû plutôt qu'un montant arbitraire.
-        // Le caissier reste libre de saisir un versement partiel inférieur.
-        const remaining = data.balanceInfo?.balance ?? 0;
-        setAmount(remaining > 0 ? String(remaining) : '');
-        setSearching(false);
+        onSuccess: (data) => {
+          setEnrollment(data);
+          // Pré-remplir avec le solde restant dû plutôt qu'un montant arbitraire.
+          // Le caissier reste libre de saisir un versement partiel inférieur.
+          const remaining = data.balanceInfo?.balance ?? 0;
+          setAmount(remaining > 0 ? String(remaining) : '');
+          setSearching(false);
+        },
+        onError: () => {
+          toast.error(`Aucun ticket trouvé pour la référence "${ref}"`);
+          setSearching(false);
+        },
       },
-      onError: () => {
-        toast.error(`Aucun ticket trouvé pour la référence "${reference}"`);
-        setSearching(false);
-      },
-    });
+    );
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reference.trim()) return;
+    loadByReference(reference.trim());
+  };
+
+  /** Ouvre un dossier trouvé par nom, en repassant par la recherche par référence. */
+  const openEnrollment = (ref: string) => {
+    setReference(ref);
+    setLookup('');
+    loadByReference(ref);
   };
 
   const handlePay = () => {
@@ -131,6 +169,65 @@ export const CaisseGuichet: React.FC = () => {
             {searching ? <span>Recherche...</span> : <span>Vérifier le Ticket</span>}
           </button>
         </form>
+
+        {/* Recherche de secours : le parent qui revient verser une tranche en
+            cours d'année n'a en général plus son papier. */}
+        <div className="mt-6 pt-6 border-t border-slate-100">
+          <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+            Le parent n'a pas sa référence ?
+          </label>
+          <div className="relative">
+            <UserSearch className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 transform -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Nom de l'élève ou numéro du parent..."
+              className="w-full pl-12 pr-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+              value={lookup}
+              onChange={(e) => setLookup(e.target.value)}
+            />
+          </div>
+
+          {trimmedLookup.length >= 2 && (
+            <div className="mt-3 space-y-2">
+              {isLooking && !matches ? (
+                <p className="text-xs text-slate-400 px-1">Recherche...</p>
+              ) : (matches?.items.length ?? 0) === 0 ? (
+                <p className="text-xs text-slate-400 px-1">
+                  Aucun dossier ne correspond à « {trimmedLookup} ».
+                </p>
+              ) : (
+                matches?.items.map((item) => {
+                  const rest = item.balanceInfo?.balance ?? 0;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => openEnrollment(item.reference)}
+                      className="w-full flex flex-wrap items-center gap-x-4 gap-y-1 text-left px-4 py-3 rounded-2xl border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/50 transition-colors"
+                    >
+                      <span className="font-semibold text-slate-800 text-sm flex-1 min-w-0 truncate">
+                        {item.student?.lastName} {item.student?.firstName}
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        {item.classRoom?.name}
+                      </span>
+                      <span className="font-mono text-xs text-slate-400">
+                        {item.reference}
+                      </span>
+                      <span
+                        className={`font-mono text-xs font-bold ${
+                          rest > 0 ? 'text-red-600' : 'text-emerald-600'
+                        }`}
+                      >
+                        {rest > 0 ? `Reste ${formatFcfa(rest)}` : 'Soldé'}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Résultat de la Recherche Ticket */}

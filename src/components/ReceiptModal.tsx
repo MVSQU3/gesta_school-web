@@ -239,7 +239,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ payment, onClose }) 
           </div>
 
           <p className="text-[11px] text-slate-400 mt-4 text-center">
-            Document officiel délivré par le guichet de caisse - Gesta_School MVP
+            Document officiel délivré par le guichet de caisse - Gesta School MVP
           </p>
         </div>
 

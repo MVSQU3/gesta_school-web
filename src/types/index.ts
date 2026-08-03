@@ -346,3 +346,56 @@ export const ENROLLMENT_STATUS_LABELS: Record<EnrollmentStatus, string> = {
   [EnrollmentStatus.ENROLLED]: 'Inscrit (soldé)',
   [EnrollmentStatus.EXPIRED]: 'Expiré',
 };
+
+/* ─── Historique d'un élève (GET /students/:id/history) ─────────────────── */
+
+/** Résultats de l'élève sur une période de notation. */
+export interface HistoryPeriod {
+  gradingPeriodId: string;
+  label: string;
+  sequence: number;
+  isClosed: boolean;
+  /** Moyenne générale sur 20. `null` si aucune note saisie sur la période. */
+  average: number | null;
+  rank: number | null;
+  classSize: number;
+  absences: { justified: number; unjustified: number };
+}
+
+/** Versement rattaché à un dossier, annulations comprises. */
+export interface HistoryPayment {
+  id: string;
+  receiptNumber: string;
+  amount: number;
+  method: PaymentMethod;
+  paidAt: string;
+  cancelledAt: string | null;
+  cancellationType: string | null;
+  cancellationReason: string | null;
+  receivedBy: string | null;
+}
+
+/** Une année de scolarité de l'élève. */
+export interface HistoryEnrollment {
+  id: string;
+  reference: string;
+  status: EnrollmentStatus;
+  academicYear: { id: string; label: string; isActive: boolean };
+  classRoom: { id: string; name: string } | null;
+  createdAt: string;
+  balance: EnrollmentBalance;
+  payments: HistoryPayment[];
+  periods: HistoryPeriod[];
+}
+
+export interface StudentHistory {
+  student: Student;
+  enrollments: HistoryEnrollment[];
+  totals: {
+    years: number;
+    totalDue: number;
+    totalPaid: number;
+    balance: number;
+    absences: { justified: number; unjustified: number };
+  };
+}

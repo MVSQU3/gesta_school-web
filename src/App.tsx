@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { Navbar } from './components/Navbar';
 import { SecretariatPage } from './pages/SecretariatPage';
@@ -15,8 +15,8 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { ForcePasswordChange } from './components/ForcePasswordChange';
 import { useAuthStore } from './store/useAuthStore';
 import { Role } from './types';
+import { queryClient } from './api/queryClient';
 
-const queryClient = new QueryClient();
 
 export const App: React.FC = () => {
   return (

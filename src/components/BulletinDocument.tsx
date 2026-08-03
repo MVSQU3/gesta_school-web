@@ -1,5 +1,5 @@
-import React from 'react';
-import type { GradingPeriod, StudentBulletin } from '../types';
+import React from "react";
+import type { GradingPeriod, StudentBulletin } from "../types";
 
 /**
  * Mention attribuée d'après la moyenne générale.
@@ -8,17 +8,17 @@ import type { GradingPeriod, StudentBulletin } from '../types';
  * si votre établissement applique d'autres seuils, ils sont à ajuster ici.
  */
 function mentionFor(average: number | null): { label: string; tone: string } {
-  if (average === null) return { label: '—', tone: 'text-slate-400' };
-  if (average >= 16) return { label: 'Excellent', tone: 'text-emerald-700' };
-  if (average >= 14) return { label: 'Très bien', tone: 'text-emerald-600' };
-  if (average >= 12) return { label: 'Bien', tone: 'text-sky-700' };
-  if (average >= 10) return { label: 'Assez bien', tone: 'text-slate-700' };
-  if (average >= 8) return { label: 'Insuffisant', tone: 'text-amber-700' };
-  return { label: 'Très insuffisant', tone: 'text-red-700' };
+  if (average === null) return { label: "—", tone: "text-slate-400" };
+  if (average >= 16) return { label: "Excellent", tone: "text-emerald-700" };
+  if (average >= 14) return { label: "Très bien", tone: "text-emerald-600" };
+  if (average >= 12) return { label: "Bien", tone: "text-sky-700" };
+  if (average >= 10) return { label: "Assez bien", tone: "text-slate-700" };
+  if (average >= 8) return { label: "Insuffisant", tone: "text-amber-700" };
+  return { label: "Très insuffisant", tone: "text-red-700" };
 }
 
-const fmt = (v: number | null, suffix = '') =>
-  v === null || v === undefined ? '—' : `${v.toFixed(2)}${suffix}`;
+const fmt = (v: number | null, suffix = "") =>
+  v === null || v === undefined ? "—" : `${v.toFixed(2)}${suffix}`;
 
 interface Props {
   bulletin: StudentBulletin;
@@ -39,16 +39,17 @@ export const BulletinDocument: React.FC<Props> = ({
   pageBreak = false,
 }) => {
   const mention = mentionFor(bulletin.average);
-  const totalAbsences = bulletin.absences.justified + bulletin.absences.unjustified;
+  const totalAbsences =
+    bulletin.absences.justified + bulletin.absences.unjustified;
 
   return (
     <article
-      className={`bulletin-page bg-white ${pageBreak ? 'break-after-page' : ''}`}
+      className={`bulletin-page bg-white ${pageBreak ? "break-after-page" : ""}`}
     >
       {/* En-tête */}
       <header className="text-center border-b-2 border-slate-800 pb-4 mb-5">
         <h1 className="text-lg font-black uppercase tracking-wide text-slate-900">
-          {schoolName || 'Établissement scolaire'}
+          {schoolName || "Établissement scolaire"}
         </h1>
         <p className="text-sm font-bold text-slate-700 mt-1">
           Bulletin de notes — {period.label}
@@ -74,7 +75,9 @@ export const BulletinDocument: React.FC<Props> = ({
           <span className="text-[11px] uppercase tracking-wide text-slate-400 font-semibold block">
             Classe
           </span>
-          <span className="font-semibold text-slate-800">{className || '—'}</span>
+          <span className="font-semibold text-slate-800">
+            {className || "—"}
+          </span>
         </div>
       </div>
 
@@ -82,20 +85,37 @@ export const BulletinDocument: React.FC<Props> = ({
       <table className="w-full border-collapse text-sm mb-5">
         <thead>
           <tr className="bg-slate-100 text-[11px] uppercase tracking-wide text-slate-600">
-            <th className="border border-slate-300 px-2 py-1.5 text-left">Matière</th>
-            <th className="border border-slate-300 px-2 py-1.5 w-14 text-center">Coef.</th>
-            <th className="border border-slate-300 px-2 py-1.5 w-16 text-center">Moy.</th>
-            <th className="border border-slate-300 px-2 py-1.5 w-16 text-center">Points</th>
-            <th className="border border-slate-300 px-2 py-1.5 w-16 text-center">Moy. cl.</th>
-            <th className="border border-slate-300 px-2 py-1.5 w-14 text-center">Min</th>
-            <th className="border border-slate-300 px-2 py-1.5 w-14 text-center">Max</th>
+            <th className="border border-slate-300 px-2 py-1.5 text-left">
+              Matière
+            </th>
+            <th className="border border-slate-300 px-2 py-1.5 w-14 text-center">
+              Coef.
+            </th>
+            <th className="border border-slate-300 px-2 py-1.5 w-16 text-center">
+              Moy.
+            </th>
+            <th className="border border-slate-300 px-2 py-1.5 w-16 text-center">
+              Points
+            </th>
+            <th className="border border-slate-300 px-2 py-1.5 w-16 text-center">
+              Moy. cl.
+            </th>
+            <th className="border border-slate-300 px-2 py-1.5 w-14 text-center">
+              Min
+            </th>
+            <th className="border border-slate-300 px-2 py-1.5 w-14 text-center">
+              Max
+            </th>
           </tr>
         </thead>
         <tbody>
           {bulletin.subjects.map((s) => {
             const notGraded = s.average === null;
             return (
-              <tr key={s.subjectId} className={notGraded ? 'text-slate-400' : ''}>
+              <tr
+                key={s.subjectId}
+                className={notGraded ? "text-slate-400" : ""}
+              >
                 <td className="border border-slate-300 px-2 py-1.5 font-medium">
                   {s.name}
                   {notGraded && (
@@ -126,7 +146,9 @@ export const BulletinDocument: React.FC<Props> = ({
         </tbody>
         <tfoot>
           <tr className="bg-slate-100 font-bold">
-            <td className="border border-slate-300 px-2 py-1.5 text-right">Totaux</td>
+            <td className="border border-slate-300 px-2 py-1.5 text-right">
+              Totaux
+            </td>
             <td className="border border-slate-300 px-2 py-1.5 text-center font-mono">
               {bulletin.totalCoefficients}
             </td>
@@ -143,15 +165,19 @@ export const BulletinDocument: React.FC<Props> = ({
       <div className="grid grid-cols-4 gap-2 mb-5">
         <SummaryBox
           label="Moyenne générale"
-          value={bulletin.average !== null ? `${bulletin.average.toFixed(2)}/20` : '—'}
+          value={
+            bulletin.average !== null
+              ? `${bulletin.average.toFixed(2)}/20`
+              : "—"
+          }
           strong
         />
         <SummaryBox
           label="Rang"
           value={
             bulletin.rank !== null
-              ? `${bulletin.rank}${bulletin.rank === 1 ? 'er' : 'e'} / ${bulletin.classSize}`
-              : 'Non classé'
+              ? `${bulletin.rank}${bulletin.rank === 1 ? "er" : "e"} / ${bulletin.classSize}`
+              : "Non classé"
           }
         />
         <SummaryBox label="Mention" value={mention.label} tone={mention.tone} />
@@ -184,7 +210,8 @@ export const BulletinDocument: React.FC<Props> = ({
       </div>
 
       <p className="text-[10px] text-slate-400 text-center mt-4">
-        Document édité le {new Date().toLocaleDateString('fr-FR')} — Gesta_School
+        Document édité le {new Date().toLocaleDateString("fr-FR")} — Gesta
+        School
       </p>
     </article>
   );
@@ -199,17 +226,19 @@ const SummaryBox: React.FC<{
 }> = ({ label, value, hint, tone, strong }) => (
   <div
     className={`border rounded p-2.5 text-center ${
-      strong ? 'border-slate-800 border-2' : 'border-slate-300'
+      strong ? "border-slate-800 border-2" : "border-slate-300"
     }`}
   >
     <span className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold block">
       {label}
     </span>
     <span
-      className={`font-mono font-black ${strong ? 'text-lg' : 'text-sm'} ${tone ?? 'text-slate-900'}`}
+      className={`font-mono font-black ${strong ? "text-lg" : "text-sm"} ${tone ?? "text-slate-900"}`}
     >
       {value}
     </span>
-    {hint && <span className="text-[10px] text-slate-400 block mt-0.5">{hint}</span>}
+    {hint && (
+      <span className="text-[10px] text-slate-400 block mt-0.5">{hint}</span>
+    )}
   </div>
 );

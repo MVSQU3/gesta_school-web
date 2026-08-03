@@ -5,6 +5,8 @@ import {
   ChevronLeft,
   ChevronRight,
   RefreshCw,
+  Pencil,
+  History,
 } from 'lucide-react';
 import {
   EnrollmentStatus,
@@ -14,6 +16,10 @@ import {
 import { useEnrollmentsList } from '../hooks/useEnrollments';
 import { useAcademicYears, useClassRooms } from '../hooks/useClasses';
 import { useSchoolStore } from '../store/useSchoolStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { Role } from '../types';
+import { EditDossierModal } from './EditDossierModal';
+import { StudentHistoryModal } from './StudentHistoryModal';
 
 const formatFcfa = (value: number) => `${Number(value).toLocaleString('fr-FR')} FCFA`;
 
@@ -34,6 +40,14 @@ const StatusBadge: React.FC<{ status: EnrollmentStatus }> = ({ status }) => (
 
 export const DossiersTable: React.FC = () => {
   const { currentSchool } = useSchoolStore();
+  const user = useAuthStore((s) => s.user);
+  // La suppression d'un dossier est réservée à la direction ; la correction
+  // reste ouverte au secrétariat, qui est celui qui saisit.
+  const canDelete = !!user?.roles.some((r) =>
+    [Role.SUPER_ADMIN, Role.DIRECTOR].includes(r),
+  );
+  const [editing, setEditing] = useState<Enrollment | null>(null);
+  const [historyOf, setHistoryOf] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [status, setStatus] = useState<EnrollmentStatus | ''>('');
@@ -171,6 +185,7 @@ export const DossiersTable: React.FC = () => {
                 <th className="py-3 px-4 text-right">Total dû</th>
                 <th className="py-3 px-4 text-right">Versé</th>
                 <th className="py-3 px-4 text-right">Reste</th>
+                <th className="py-3 px-4 w-20" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
@@ -210,6 +225,22 @@ export const DossiersTable: React.FC = () => {
                       {formatFcfa(item.balanceInfo?.balance ?? 0)}
                     </span>
                   </td>
+                  <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                    <button
+                      onClick={() => setHistoryOf(item.studentId)}
+                      title="Voir le dossier de l'élève"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                    >
+                      <History className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setEditing(item)}
+                      title="Corriger ce dossier"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -241,6 +272,18 @@ export const DossiersTable: React.FC = () => {
           </div>
         </div>
       )}
+
+      <StudentHistoryModal
+        studentId={historyOf}
+        onClose={() => setHistoryOf(null)}
+      />
+
+      <EditDossierModal
+        key={editing?.id ?? 'aucun'}
+        dossier={editing}
+        canDelete={canDelete}
+        onClose={() => setEditing(null)}
+      />
     </div>
   );
 };

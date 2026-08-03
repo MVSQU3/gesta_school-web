@@ -1,11 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
-import { School as SchoolIcon, UserCheck, CreditCard, Building2, ShieldCheck, Users, GraduationCap, CalendarCheck, Award, KeyRound } from 'lucide-react';
-import { useSchoolStore } from '../store/useSchoolStore';
-import { useSchools } from '../hooks/useSchools';
-import { useAuthStore } from '../store/useAuthStore';
-import { Role } from '../types';
-import { ChangePasswordModal } from './ChangePasswordModal';
+import React, { useEffect, useState } from "react";
+import { NavLink } from "react-router-dom";
+import {
+  School as SchoolIcon,
+  UserCheck,
+  CreditCard,
+  Building2,
+  ShieldCheck,
+  Users,
+  GraduationCap,
+  CalendarCheck,
+  Award,
+  KeyRound,
+} from "lucide-react";
+import { useSchoolStore } from "../store/useSchoolStore";
+import { useSchools } from "../hooks/useSchools";
+import { useAuthStore } from "../store/useAuthStore";
+import { Role } from "../types";
+import { ChangePasswordModal } from "./ChangePasswordModal";
 
 export const Navbar: React.FC = () => {
   const { currentSchool, setCurrentSchool } = useSchoolStore();
@@ -21,7 +32,7 @@ export const Navbar: React.FC = () => {
         if (userSchool && currentSchool?.id !== userSchool.id) {
           setCurrentSchool(userSchool);
         }
-      } 
+      }
       // Sinon, on initialise avec la première école par défaut s'il n'y en a pas encore
       else if (!currentSchool) {
         setCurrentSchool(schools[0]);
@@ -38,37 +49,51 @@ export const Navbar: React.FC = () => {
             <SchoolIcon className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="font-bold text-lg leading-tight tracking-wide">Gesta_School</h1>
-            <p className="text-xs text-indigo-400 font-medium">Enrôlement Éclair & Caisse MVP</p>
+            <h1 className="font-bold text-lg leading-tight tracking-wide">
+              Gesta School
+            </h1>
+            <p className="text-xs text-indigo-400 font-medium">
+              Enrôlement Éclair & Caisse MVP
+            </p>
           </div>
         </div>
 
         {/* Sélecteur d'établissement Multi-Tenant (Visible uniquement si Super Admin ou Directeur, sinon on affiche l'école de l'utilisateur) */}
         {hasAnyRole([Role.SUPER_ADMIN]) && (
           <div className="flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
-          <Building2 className="w-4 h-4 text-indigo-400" />
-          <span className="text-xs text-slate-400 font-medium hidden sm:inline">Établissement:</span>
-          <select
-            className="bg-transparent text-sm font-semibold text-white focus:outline-none cursor-pointer"
-            value={currentSchool?.id || ''}
-            onChange={(e) => {
-              const selected = schools.find((s) => s.id === e.target.value);
-              if (selected) setCurrentSchool(selected);
-            }}
-          >
-            {isLoading ? (
-              <option value="" disabled className="bg-slate-900">Chargement...</option>
-            ) : schools.length === 0 ? (
-              <option value="" disabled className="bg-slate-900">Aucune école disponible</option>
-            ) : (
-              schools.map((s) => (
-                <option key={s.id} value={s.id} className="bg-slate-900 text-white">
-                  {s.name} ({s.slug})
+            <Building2 className="w-4 h-4 text-indigo-400" />
+            <span className="text-xs text-slate-400 font-medium hidden sm:inline">
+              Établissement:
+            </span>
+            <select
+              className="bg-transparent text-sm font-semibold text-white focus:outline-none cursor-pointer"
+              value={currentSchool?.id || ""}
+              onChange={(e) => {
+                const selected = schools.find((s) => s.id === e.target.value);
+                if (selected) setCurrentSchool(selected);
+              }}
+            >
+              {isLoading ? (
+                <option value="" disabled className="bg-slate-900">
+                  Chargement...
                 </option>
-              ))
-            )}
-          </select>
-        </div>
+              ) : schools.length === 0 ? (
+                <option value="" disabled className="bg-slate-900">
+                  Aucune école disponible
+                </option>
+              ) : (
+                schools.map((s) => (
+                  <option
+                    key={s.id}
+                    value={s.id}
+                    className="bg-slate-900 text-white"
+                  >
+                    {s.name} ({s.slug})
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
         )}
 
         {/* Liens de Navigation Rôles */}
@@ -79,8 +104,8 @@ export const Navbar: React.FC = () => {
               className={({ isActive }) =>
                 `flex items-center space-x-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
                 }`
               }
             >
@@ -95,8 +120,8 @@ export const Navbar: React.FC = () => {
               className={({ isActive }) =>
                 `flex items-center space-x-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
+                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
                 }`
               }
             >
@@ -111,8 +136,8 @@ export const Navbar: React.FC = () => {
               className={({ isActive }) =>
                 `flex items-center space-x-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
                 }`
               }
             >
@@ -127,8 +152,8 @@ export const Navbar: React.FC = () => {
               className={({ isActive }) =>
                 `flex items-center space-x-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-emerald-700 text-white shadow-md shadow-emerald-700/20'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    ? "bg-emerald-700 text-white shadow-md shadow-emerald-700/20"
+                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
                 }`
               }
             >
@@ -137,14 +162,14 @@ export const Navbar: React.FC = () => {
             </NavLink>
           )}
 
-          {hasAnyRole([Role.SECRETARY, Role.TEACHER]) && (
+          {hasAnyRole([Role.DIRECTOR, Role.SECRETARY, Role.TEACHER]) && (
             <NavLink
               to="/absences"
               className={({ isActive }) =>
                 `flex items-center space-x-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    ? "bg-amber-600 text-white shadow-md shadow-amber-600/20"
+                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
                 }`
               }
             >
@@ -159,8 +184,8 @@ export const Navbar: React.FC = () => {
               className={({ isActive }) =>
                 `flex items-center space-x-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-violet-600 text-white shadow-md shadow-violet-600/20'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    ? "bg-violet-600 text-white shadow-md shadow-violet-600/20"
+                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
                 }`
               }
             >
@@ -175,8 +200,8 @@ export const Navbar: React.FC = () => {
               className={({ isActive }) =>
                 `flex items-center space-x-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
-                    : 'text-amber-400 hover:bg-slate-800 hover:text-amber-300'
+                    ? "bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20"
+                    : "text-amber-400 hover:bg-slate-800 hover:text-amber-300"
                 }`
               }
             >
@@ -184,11 +209,15 @@ export const Navbar: React.FC = () => {
               <span>Super-Admin</span>
             </NavLink>
           )}
-          
+
           <div className="ml-4 pl-4 border-l border-slate-700 flex items-center space-x-3">
             <div className="text-right hidden md:block">
-              <p className="text-xs font-semibold text-slate-200">{user?.email}</p>
-              <p className="text-[10px] text-slate-400">{user?.roles.join(', ')}</p>
+              <p className="text-xs font-semibold text-slate-200">
+                {user?.email}
+              </p>
+              <p className="text-[10px] text-slate-400">
+                {user?.roles.join(", ")}
+              </p>
             </div>
             <button
               onClick={() => setShowPasswordModal(true)}
@@ -206,7 +235,7 @@ export const Navbar: React.FC = () => {
           </div>
         </nav>
       </div>
-    {showPasswordModal && (
+      {showPasswordModal && (
         <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />
       )}
     </header>

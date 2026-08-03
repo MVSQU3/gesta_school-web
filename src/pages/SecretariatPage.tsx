@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { UserPlus, Ghost, FolderOpen } from 'lucide-react';
+import { UserPlus, Ghost, FolderOpen, Users } from 'lucide-react';
 import { SecretariatForm } from '../components/SecretariatForm';
 import { LesOubliesTable } from '../components/LesOubliesTable';
 import { DossiersTable } from '../components/DossiersTable';
+import { BulkReenrollment } from '../components/BulkReenrollment';
 
 export const SecretariatPage: React.FC = () => {
-  const [activeSubTab, setActiveSubTab] = useState<'inscription' | 'dossiers' | 'oublies'>(
+  const [activeSubTab, setActiveSubTab] = useState<'inscription' | 'masse' | 'dossiers' | 'oublies'>(
     'inscription',
   );
 
@@ -23,6 +24,18 @@ export const SecretariatPage: React.FC = () => {
         >
           <UserPlus className="w-4 h-4" />
           <span>Nouvelle Inscription (Ticket 72H)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('masse')}
+          className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${
+            activeSubTab === 'masse'
+              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Réinscription en masse</span>
         </button>
 
         <button
@@ -52,6 +65,7 @@ export const SecretariatPage: React.FC = () => {
 
       {/* Contenu de l'onglet actif */}
       {activeSubTab === 'inscription' && <SecretariatForm />}
+      {activeSubTab === 'masse' && <BulkReenrollment />}
       {activeSubTab === 'dossiers' && <DossiersTable />}
       {activeSubTab === 'oublies' && <LesOubliesTable />}
     </div>

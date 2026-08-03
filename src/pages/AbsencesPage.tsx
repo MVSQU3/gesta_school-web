@@ -54,6 +54,18 @@ export const AbsencesPage: React.FC = () => {
       [Role.SUPER_ADMIN, Role.DIRECTOR, Role.SECRETARY].includes(r),
     );
 
+  /**
+   * L'appel se constate en classe : seuls l'enseignant et la direction le
+   * saisissent. Le secrétariat consulte la feuille et justifie les absences a
+   * posteriori, mais ne les déclare pas — le backend refuse sa saisie, l'écran
+   * ne doit donc pas lui proposer un bouton qui échouera.
+   */
+  const canRecord =
+    !!user &&
+    user.roles.some((r) =>
+      [Role.SUPER_ADMIN, Role.DIRECTOR, Role.TEACHER].includes(r),
+    );
+
   const { data: years = [] } = useAcademicYears();
   const activeYear = useMemo(
     () => years.find((y) => y.isActive) ?? years[0],
@@ -384,12 +396,14 @@ export const AbsencesPage: React.FC = () => {
 
             <div className="mt-6 flex items-center gap-3">
               <div className="flex-1 text-xs text-slate-400">
-                Un élève décoché est repassé présent : son absence sera effacée à
-                l'enregistrement.
+                {canRecord
+                  ? "Un élève décoché est repassé présent : son absence sera effacée à l'enregistrement."
+                  : "Consultation seule : l'appel est saisi par l'enseignant de la classe ou par la direction."}
               </div>
               <button
                 onClick={handleSave}
-                disabled={recordMutation.isPending || isFetching}
+                hidden={!canRecord}
+                disabled={!canRecord || recordMutation.isPending || isFetching}
                 className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-2xl shadow-lg shadow-amber-600/30 text-sm flex items-center gap-2 disabled:opacity-40"
               >
                 {recordMutation.isPending ? (
