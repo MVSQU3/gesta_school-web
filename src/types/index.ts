@@ -399,3 +399,49 @@ export interface StudentHistory {
     absences: { justified: number; unjustified: number };
   };
 }
+
+/* ─── Journal d'audit (GET /audit) ──────────────────────────────────────── */
+
+/** Valeur d'un champ avant et après modification. */
+export interface AuditChange {
+  before: unknown;
+  after: unknown;
+}
+
+export interface AuditLog {
+  id: string;
+  schoolId: string | null;
+  actorUserId: string | null;
+  /** Recopié à l'écriture : survit à la suppression du compte. */
+  actorEmail: string | null;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  /** Phrase lisible composée par le serveur. */
+  summary: string;
+  changes: Record<string, AuditChange> | null;
+  createdAt: string;
+}
+
+/** Libellés des opérations tracées, alignés sur ceux du serveur. */
+export const AUDIT_ACTION_LABELS: Record<string, string> = {
+  CLASSROOM_CREATED: 'Classe créée',
+  CLASSROOM_UPDATED: 'Classe modifiée',
+  CLASSROOM_DELETED: 'Classe supprimée',
+  USER_CREATED: 'Compte créé',
+  USER_UPDATED: 'Compte modifié',
+  USER_STATUS_CHANGED: 'Compte activé ou désactivé',
+  USER_PASSWORD_RESET: 'Mot de passe réinitialisé',
+  USER_DELETED: 'Compte supprimé',
+  ENROLLMENT_UPDATED: 'Dossier corrigé',
+  ENROLLMENT_DELETED: 'Dossier supprimé',
+  ENROLLMENT_RENEWED: 'Dossier renouvelé',
+  ENROLLMENT_BULK_CREATED: 'Réinscription en masse',
+  STUDENT_UPDATED: 'Fiche élève corrigée',
+  ACADEMIC_YEAR_CREATED: 'Année scolaire ouverte',
+  ACADEMIC_YEAR_UPDATED: 'Année scolaire modifiée',
+  GRADING_PERIOD_UPDATED: 'Période de notation modifiée',
+  SCHOOL_CREATED: 'Établissement créé',
+  SCHOOL_UPDATED: 'Établissement modifié',
+  SCHOOL_DELETED: 'Établissement supprimé',
+};

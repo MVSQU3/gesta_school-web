@@ -7,6 +7,7 @@ import {
   RefreshCw,
   Pencil,
   History,
+  Download,
 } from 'lucide-react';
 import {
   EnrollmentStatus,
@@ -20,6 +21,8 @@ import { useAuthStore } from '../store/useAuthStore';
 import { Role } from '../types';
 import { EditDossierModal } from './EditDossierModal';
 import { StudentHistoryModal } from './StudentHistoryModal';
+import { downloadCsv } from '../api/downloadPdf';
+import toast from 'react-hot-toast';
 
 const formatFcfa = (value: number) => `${Number(value).toLocaleString('fr-FR')} FCFA`;
 
@@ -48,6 +51,30 @@ export const DossiersTable: React.FC = () => {
   );
   const [editing, setEditing] = useState<Enrollment | null>(null);
   const [historyOf, setHistoryOf] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  /**
+   * Export tableur des dossiers filtrés, avec leur situation financière.
+   *
+   * C'est le document de relance des familles : il reprend les filtres
+   * affichés — classe, année, statut, recherche — mais sans pagination.
+   */
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (search) params.append('search', search);
+      if (status) params.append('status', status);
+      if (academicYearId) params.append('academicYearId', academicYearId);
+      if (classRoomId) params.append('classRoomId', classRoomId);
+      if (currentSchool?.id) params.append('schoolId', currentSchool.id);
+      await downloadCsv(`/enrollments/export?${params.toString()}`, 'dossiers.csv');
+    } catch {
+      toast.error("L'export a échoué.");
+    } finally {
+      setExporting(false);
+    }
+  };
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [status, setStatus] = useState<EnrollmentStatus | ''>('');
@@ -98,14 +125,24 @@ export const DossiersTable: React.FC = () => {
           </div>
         </div>
 
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="flex items-center space-x-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-all"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-          <span>Actualiser</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={handleExport}
+            disabled={exporting || total === 0}
+            className="flex items-center space-x-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-all disabled:opacity-50"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>{exporting ? 'Export...' : 'Exporter (CSV)'}</span>
+          </button>
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="flex items-center space-x-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-all"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+            <span>Actualiser</span>
+          </button>
+        </div>
       </div>
 
       {/* Filtres */}

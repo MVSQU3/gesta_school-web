@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import {
   Users, Mail, Lock, Shield, PlusCircle, Loader2,
   Calendar, BookOpen, Hash, CheckCircle2, GraduationCap,
-  LayoutDashboard, Pencil, Trash2, Check, X, Power, Layers,
+  LayoutDashboard, Pencil, Trash2, Check, X, Power, Layers, ScrollText,
 } from 'lucide-react';
 import { useCreateUser } from '../hooks/useUsers';
 import {
@@ -21,6 +21,7 @@ import { PersonnelList } from '../components/PersonnelList';
 import { PeriodsManager } from '../components/PeriodsManager';
 import { SubjectsManager } from '../components/SubjectsManager';
 import { TeachingManager } from '../components/TeachingManager';
+import { AuditLogTable } from '../components/AuditLogTable';
 import { Role } from '../types';
 
 /* ─── Sous-composant : onglet actif ──────────────────────────────── */
@@ -30,7 +31,8 @@ type Tab =
   | 'annee'
   | 'classe'
   | 'matieres'
-  | 'enseignants';
+  | 'enseignants'
+  | 'audit';
 
 const errorMessage = (err: any, fallback: string) => {
   const msg = err?.response?.data?.message || fallback;
@@ -116,6 +118,13 @@ export const DirectionPage: React.FC = () => {
           color="bg-fuchsia-600"
         />
         <TabButton
+          active={activeTab === 'audit'}
+          onClick={() => setActiveTab('audit')}
+          icon={<ScrollText className="w-4 h-4" />}
+          label="Journal d'audit"
+          color="bg-slate-700"
+        />
+        <TabButton
           active={activeTab === 'enseignants'}
           onClick={() => setActiveTab('enseignants')}
           icon={<GraduationCap className="w-4 h-4" />}
@@ -141,6 +150,7 @@ export const DirectionPage: React.FC = () => {
       {activeTab === 'classe' && <ClasseTab />}
       {activeTab === 'matieres' && <SubjectsManager />}
       {activeTab === 'enseignants' && <TeachingManager />}
+      {activeTab === 'audit' && <AuditLogTable />}
     </div>
   );
 };

@@ -10,6 +10,7 @@ import {
   Search,
   Ban,
   Eye,
+  Download,
 } from 'lucide-react';
 import {
   CancellationType,
@@ -24,6 +25,7 @@ import {
   useCashJournal,
   useReceiptLookup,
 } from '../hooks/usePayments';
+import { downloadCsv } from '../api/downloadPdf';
 import { useSchoolStore } from '../store/useSchoolStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { ReceiptModal } from './ReceiptModal';
@@ -49,6 +51,27 @@ export const JournalCaisse: React.FC = () => {
   const [receiptSearch, setReceiptSearch] = useState('');
   const [viewedReceipt, setViewedReceipt] = useState<Payment | null>(null);
   const [paymentToCancel, setPaymentToCancel] = useState<Payment | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  /**
+   * Export tableur de la période affichée.
+   *
+   * Reprend les filtres en cours mais ignore la pagination : la comptabilité
+   * veut le journal complet, pas la page à l'écran.
+   */
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({ from, to });
+      if (method) params.append('method', method);
+      if (currentSchool?.id) params.append('schoolId', currentSchool.id);
+      await downloadCsv(`/payments/export?${params.toString()}`, 'journal-caisse.csv');
+    } catch {
+      toast.error("L'export a échoué.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const lookupMutation = useReceiptLookup();
   const cancelMutation = useCancelPayment();
@@ -135,6 +158,14 @@ export const JournalCaisse: React.FC = () => {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
             <span>Actualiser</span>
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex items-center space-x-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-all disabled:opacity-50"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>{exporting ? 'Export...' : 'Exporter (CSV)'}</span>
           </button>
           <button
             onClick={() => window.print()}
