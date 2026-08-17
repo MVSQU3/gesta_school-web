@@ -4,6 +4,9 @@ import {
   Users, Mail, Lock, Shield, PlusCircle, Loader2,
   Calendar, BookOpen, Hash, CheckCircle2, GraduationCap,
   LayoutDashboard, Pencil, Trash2, Check, X, Power, Layers, ScrollText,
+  UserSearch,
+  ArrowRightLeft,
+  CalendarClock,
 } from 'lucide-react';
 import { useCreateUser } from '../hooks/useUsers';
 import {
@@ -22,11 +25,17 @@ import { PeriodsManager } from '../components/PeriodsManager';
 import { SubjectsManager } from '../components/SubjectsManager';
 import { TeachingManager } from '../components/TeachingManager';
 import { AuditLogTable } from '../components/AuditLogTable';
+import { StudentsExplorer } from '../components/StudentsExplorer';
+import { TransfersManager } from '../components/TransfersManager';
+import { ScheduleManager } from '../components/ScheduleManager';
 import { Role } from '../types';
 
 /* ─── Sous-composant : onglet actif ──────────────────────────────── */
 type Tab =
   | 'dashboard'
+  | 'eleves'
+  | 'transferts'
+  | 'edt'
   | 'personnel'
   | 'annee'
   | 'classe'
@@ -50,11 +59,10 @@ const TabButton: React.FC<{
 }> = ({ active, onClick, icon, label, color }) => (
   <button
     onClick={onClick}
-    className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${
-      active
+    className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${active
         ? `${color} text-white shadow-lg`
         : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-    }`}
+      }`}
   >
     {icon}
     <span>{label}</span>
@@ -90,6 +98,20 @@ export const DirectionPage: React.FC = () => {
           color="bg-slate-800"
         />
         <TabButton
+          active={activeTab === 'eleves'}
+          onClick={() => setActiveTab('eleves')}
+          icon={<UserSearch className="w-4 h-4" />}
+          label="Élèves"
+          color="bg-amber-600"
+        />
+        <TabButton
+          active={activeTab === 'transferts'}
+          onClick={() => setActiveTab('transferts')}
+          icon={<ArrowRightLeft className="w-4 h-4" />}
+          label="Transferts de dossier"
+          color="bg-teal-600"
+        />
+        <TabButton
           active={activeTab === 'personnel'}
           onClick={() => setActiveTab('personnel')}
           icon={<Users className="w-4 h-4" />}
@@ -109,6 +131,13 @@ export const DirectionPage: React.FC = () => {
           icon={<BookOpen className="w-4 h-4" />}
           label="Salle de Classe"
           color="bg-violet-600"
+        />
+        <TabButton
+          active={activeTab === 'edt'}
+          onClick={() => setActiveTab('edt')}
+          icon={<CalendarClock className="w-4 h-4" />}
+          label="Emploi du temps"
+          color="bg-orange-600"
         />
         <TabButton
           active={activeTab === 'matieres'}
@@ -135,6 +164,8 @@ export const DirectionPage: React.FC = () => {
 
       {/* Contenu */}
       {activeTab === 'dashboard' && <DashboardDirection />}
+      {activeTab === 'eleves' && <StudentsExplorer />}
+      {activeTab === 'transferts' && <TransfersManager />}
       {activeTab === 'personnel' && (
         <div className="space-y-6">
           <PersonnelTab />
@@ -148,6 +179,7 @@ export const DirectionPage: React.FC = () => {
         </div>
       )}
       {activeTab === 'classe' && <ClasseTab />}
+      {activeTab === 'edt' && <ScheduleManager />}
       {activeTab === 'matieres' && <SubjectsManager />}
       {activeTab === 'enseignants' && <TeachingManager />}
       {activeTab === 'audit' && <AuditLogTable />}
@@ -182,12 +214,13 @@ const PersonnelTab: React.FC = () => {
 
   return (
     <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8">
-      <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center">
-        <PlusCircle className="w-5 h-5 mr-2 text-indigo-500" />
-        Ajouter un employé
-      </h2>
+      <div className="max-w-xl mx-auto">
+        <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center">
+          <PlusCircle className="w-5 h-5 mr-2 text-indigo-500" />
+          Ajouter un employé
+        </h2>
 
-      <form onSubmit={handleSubmit} className="space-y-5 max-w-xl">
+        <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label className="block text-sm font-semibold text-slate-700 mb-2">Email *</label>
           <div className="relative">
@@ -247,6 +280,7 @@ const PersonnelTab: React.FC = () => {
             : 'Créer le compte'}
         </button>
       </form>
+      </div>
     </div>
   );
 };
@@ -312,13 +346,11 @@ const AnneeScolaireTab: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsActive(!isActive)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                isActive ? 'bg-emerald-500' : 'bg-slate-300'
-              }`}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isActive ? 'bg-emerald-500' : 'bg-slate-300'
+                }`}
             >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                isActive ? 'translate-x-6' : 'translate-x-1'
-              }`} />
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isActive ? 'translate-x-6' : 'translate-x-1'
+                }`} />
             </button>
           </div>
 
@@ -445,11 +477,10 @@ const AnneeRow: React.FC<{ year: { id: string; label: string; isActive: boolean 
               <Pencil className="w-4 h-4" />
             </button>
             <button onClick={toggleActive} title={year.isActive ? 'Clôturer' : 'Activer'}
-              className={`p-1.5 rounded-lg ${
-                year.isActive
+              className={`p-1.5 rounded-lg ${year.isActive
                   ? 'bg-amber-100 hover:bg-amber-200 text-amber-700'
                   : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
-              }`}>
+                }`}>
               <Power className="w-4 h-4" />
             </button>
             <button onClick={remove} title="Supprimer"
@@ -537,9 +568,8 @@ const ClasseRow: React.FC<{
               {classRoom.level}
             </span>
             <div
-              className={`text-xs font-mono font-bold mt-0.5 ${
-                Number(classRoom.tuitionFee) > 0 ? 'text-slate-600' : 'text-amber-600'
-              }`}
+              className={`text-xs font-mono font-bold mt-0.5 ${Number(classRoom.tuitionFee) > 0 ? 'text-slate-600' : 'text-amber-600'
+                }`}
             >
               {Number(classRoom.tuitionFee) > 0
                 ? formatFcfa(Number(classRoom.tuitionFee))

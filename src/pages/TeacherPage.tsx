@@ -24,6 +24,7 @@ import {
   useMyAssignments,
 } from '../hooks/useGrading';
 import { GradeSheetEditor } from '../components/GradeSheetEditor';
+import { MyScheduleCard } from '../components/MyScheduleCard';
 
 const errorMessage = (err: any, fallback: string) => {
   const msg = err?.response?.data?.message || fallback;
@@ -131,6 +132,8 @@ export const TeacherPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      <MyScheduleCard />
 
       {/* Sélection classe/matière et période */}
       <div className="bg-white rounded-2xl shadow-lg border border-slate-100 p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -100,7 +100,7 @@ const SubjectCatalog: React.FC = () => {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Ex : Mathématiques"
-          className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+          className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
         />
         <input
           type="text"
@@ -267,7 +267,7 @@ const ClassProgramEditor: React.FC = () => {
             value={subjectId}
             onChange={(e) => setSubjectId(e.target.value)}
             required
-            className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm bg-white"
+            className="flex-1 min-w-0 text-ellipsis px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm bg-white"
           >
             <option value="">
               {available.length === 0

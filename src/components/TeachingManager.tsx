@@ -71,8 +71,12 @@ export const TeachingManager: React.FC = () => {
     return Array.from(map.values()).sort((a, b) => a.email.localeCompare(b.email));
   }, [assignments]);
 
+  const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
+  const groupIndex = Math.min(selectedGroupIndex, Math.max(0, grouped.length - 1));
+  const selectedGroup = grouped[groupIndex];
+
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8">
         <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center">
           <UserPlus className="w-5 h-5 mr-2 text-indigo-500" />
@@ -208,11 +212,25 @@ export const TeachingManager: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-5">
-            {grouped.map((group) => (
-              <div key={group.email}>
-                <p className="text-sm font-bold text-slate-800 mb-2">{group.email}</p>
+            <div className="mb-4">
+              <select
+                value={groupIndex}
+                onChange={(e) => setSelectedGroupIndex(Number(e.target.value))}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-slate-50"
+              >
+                {grouped.map((g, idx) => (
+                  <option key={g.email} value={idx}>
+                    {g.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedGroup && (
+              <div>
+                <p className="text-sm font-bold text-slate-800 mb-2">{selectedGroup.email}</p>
                 <ul className="space-y-2">
-                  {group.rows.map((a) => (
+                  {selectedGroup.rows.map((a) => (
                     <li
                       key={a.id}
                       className="flex items-center justify-between gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200"
@@ -224,7 +242,7 @@ export const TeachingManager: React.FC = () => {
                         onClick={() => {
                           if (
                             !window.confirm(
-                              `Retirer ${a.subject?.name} en ${a.classRoom?.name} à ${group.email} ?\n\nLes évaluations et notes déjà saisies sont conservées.`,
+                              `Retirer ${a.subject?.name} en ${a.classRoom?.name} à ${selectedGroup.email} ?\n\nLes évaluations et notes déjà saisies sont conservées.`,
                             )
                           )
                             return;
@@ -243,7 +261,7 @@ export const TeachingManager: React.FC = () => {
                   ))}
                 </ul>
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>

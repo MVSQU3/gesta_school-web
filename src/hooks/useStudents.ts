@@ -1,20 +1,35 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../api/client';
-import type { Student, StudentHistory } from '../types';
+import type { Student, StudentFile } from '../types';
 
 /**
- * Dossier complet d'un élève : toutes ses années, versements et résultats.
- * Requête lourde côté serveur : elle n'est lancée qu'à l'ouverture de la fiche.
+ * Dossier d'un élève cadré sur une année scolaire.
  *
- * Route: GET /api/v1/students/:id/history
+ * Sans `academicYearId`, le serveur retourne l'année active — c'est la question
+ * posée dans la quasi-totalité des cas. Les années antérieures sont listées
+ * dans `availableYears` et ne sont chargées que si le directeur les demande,
+ * chacune sous sa propre clé de cache : revenir à l'année en cours est alors
+ * instantané.
+ *
+ * Route: GET /api/v1/students/:id/history?academicYearId=
  */
-export function useStudentHistory(studentId?: string, schoolId?: string) {
+export function useStudentFile(
+  studentId?: string,
+  academicYearId?: string,
+  schoolId?: string,
+) {
   return useQuery({
-    queryKey: ['students', 'history', studentId, schoolId],
+    queryKey: ['students', 'file', studentId, academicYearId ?? 'active', schoolId],
     enabled: !!studentId,
+    // Le dossier mêle notes, absences et caisse : on garde la réponse courte
+    // pour qu'un versement encaissé juste après se voie au retour sur la fiche.
+    staleTime: 30_000,
     queryFn: async () => {
-      const query = schoolId ? `?schoolId=${schoolId}` : '';
-      const { data } = await apiClient.get<StudentHistory>(
+      const params = new URLSearchParams();
+      if (academicYearId) params.append('academicYearId', academicYearId);
+      if (schoolId) params.append('schoolId', schoolId);
+      const query = params.toString() ? `?${params.toString()}` : '';
+      const { data } = await apiClient.get<StudentFile>(
         `/students/${studentId}/history${query}`,
       );
       return data;

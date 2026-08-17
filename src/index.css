@@ -16,7 +16,9 @@
   #journal-printable,
   #journal-printable *,
   #bulletin-printable,
-  #bulletin-printable * {
+  #bulletin-printable *,
+  #schedule-printable,
+  #schedule-printable * {
     visibility: visible;
   }
 
@@ -72,5 +74,37 @@
 
   #bulletin-printable tr {
     break-inside: avoid;
+  }
+
+  /* Emploi du temps. La largeur minimale de la grille est levée : à l'écran
+     elle force le défilement horizontal, à l'impression elle déborderait de
+     la page. Le paysage reste à choisir dans la boîte d'impression — `@page`
+     est global et basculerait aussi les reçus, qui sont en portrait. */
+  #schedule-printable {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  #schedule-printable table {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  #schedule-printable tr {
+    break-inside: avoid;
+  }
+
+  /* Les séances sont sur fond sombre à l'écran : à l'impression, on garde le
+     cadre mais on repasse en texte noir pour ne pas vider une cartouche. */
+  #schedule-printable .bg-slate-900 {
+    background: transparent !important;
+    color: #000 !important;
+    border: 1px solid #cbd5e1;
+  }
+
+  #schedule-printable .text-slate-300 {
+    color: #475569 !important;
   }
 }

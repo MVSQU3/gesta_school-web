@@ -287,6 +287,13 @@ export interface StudentBulletin {
   average: number | null;
   rank: number | null;
   classSize: number;
+  /** Détail par matière, tel qu'il figure au bulletin. */
+  subjects: {
+    name: string;
+    coefficient: number;
+    average: number | null;
+    classAverage: number | null;
+  }[];
   absences: { justified: number; unjustified: number };
 }
 
@@ -359,6 +366,13 @@ export interface HistoryPeriod {
   average: number | null;
   rank: number | null;
   classSize: number;
+  /** Détail par matière, tel qu'il figure au bulletin. */
+  subjects: {
+    name: string;
+    coefficient: number;
+    average: number | null;
+    classAverage: number | null;
+  }[];
   absences: { justified: number; unjustified: number };
 }
 
@@ -375,6 +389,15 @@ export interface HistoryPayment {
   receivedBy: string | null;
 }
 
+/** Une absence datée, pour le relevé d'assiduité. */
+export interface HistoryAbsence {
+  id: string;
+  date: string;
+  halfDay: HalfDay;
+  isJustified: boolean;
+  reason: string | null;
+}
+
 /** Une année de scolarité de l'élève. */
 export interface HistoryEnrollment {
   id: string;
@@ -383,20 +406,39 @@ export interface HistoryEnrollment {
   academicYear: { id: string; label: string; isActive: boolean };
   classRoom: { id: string; name: string } | null;
   createdAt: string;
+  expiresAt: string;
   balance: EnrollmentBalance;
   payments: HistoryPayment[];
   periods: HistoryPeriod[];
+  absences: HistoryAbsence[];
 }
 
-export interface StudentHistory {
+/** Année où l'élève possède un dossier — alimente le sélecteur. */
+export interface StudentYearOption {
+  id: string;
+  label: string;
+  isActive: boolean;
+  enrollmentId: string;
+  status: EnrollmentStatus;
+  className: string | null;
+}
+
+/**
+ * Dossier d'un élève cadré sur une seule année.
+ *
+ * `enrollment` ne concerne que `selectedYear` ; les autres années restent
+ * listées dans `availableYears` et ne sont chargées qu'à la demande.
+ */
+export interface StudentFile {
   student: Student;
-  enrollments: HistoryEnrollment[];
+  availableYears: StudentYearOption[];
+  selectedYear: { id: string; label: string; isActive: boolean } | null;
+  enrollment: HistoryEnrollment | null;
   totals: {
     years: number;
     totalDue: number;
     totalPaid: number;
     balance: number;
-    absences: { justified: number; unjustified: number };
   };
 }
 
@@ -445,3 +487,133 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   SCHOOL_UPDATED: 'Établissement modifié',
   SCHOOL_DELETED: 'Établissement supprimé',
 };
+
+/* ─── Transfert de dossier entre établissements ─────────────────────────── */
+
+export enum TransferStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  REVOKED = 'REVOKED',
+}
+
+export const TRANSFER_STATUS_LABELS: Record<TransferStatus, string> = {
+  [TransferStatus.PENDING]: 'En attente',
+  [TransferStatus.APPROVED]: 'Accordé',
+  [TransferStatus.REJECTED]: 'Refusé',
+  [TransferStatus.REVOKED]: 'Révoqué',
+};
+
+/** Élève trouvé dans un autre établissement — identité seule, aucune note. */
+export interface ForeignStudentMatch {
+  studentId: string;
+  firstName: string;
+  lastName: string;
+  birthDay: string;
+  school: { id: string; name: string };
+  existingRequest: { id: string; status: TransferStatus } | null;
+}
+
+export interface TransferRequest {
+  id: string;
+  requestingSchoolId: string;
+  holdingSchoolId: string;
+  studentId: string;
+  status: TransferStatus;
+  reason: string;
+  decisionReason: string | null;
+  decidedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  student?: Student;
+  requestingSchool?: { id: string; name: string };
+  holdingSchool?: { id: string; name: string };
+  requestedBy?: { id: string; email: string };
+}
+
+/** Le dossier transmis : des bulletins, et rien d'autre. */
+export interface SharedFile {
+  student: { firstName: string; lastName: string; birthDay: string };
+  holdingSchool: string;
+  expiresAt: string | null;
+  years: {
+    label: string;
+    className: string | null;
+    periods: {
+      period: string;
+      average: number | null;
+      rank: number | null;
+      classSize: number;
+      subjects: {
+        name: string;
+        coefficient: number;
+        average: number | null;
+        classAverage: number | null;
+      }[];
+    }[];
+  }[];
+}
+
+/* ─── Emploi du temps ───────────────────────────────────────────────────── */
+
+export enum DayOfWeek {
+  MONDAY = 1,
+  TUESDAY = 2,
+  WEDNESDAY = 3,
+  THURSDAY = 4,
+  FRIDAY = 5,
+}
+
+export const DAY_LABELS: Record<DayOfWeek, string> = {
+  [DayOfWeek.MONDAY]: 'Lundi',
+  [DayOfWeek.TUESDAY]: 'Mardi',
+  [DayOfWeek.WEDNESDAY]: 'Mercredi',
+  [DayOfWeek.THURSDAY]: 'Jeudi',
+  [DayOfWeek.FRIDAY]: 'Vendredi',
+};
+
+/** Les jours ouvrés, dans l'ordre de la grille. */
+export const SCHOOL_DAYS: DayOfWeek[] = [
+  DayOfWeek.MONDAY,
+  DayOfWeek.TUESDAY,
+  DayOfWeek.WEDNESDAY,
+  DayOfWeek.THURSDAY,
+  DayOfWeek.FRIDAY,
+];
+
+/** Un créneau de la grille horaire de l'établissement. */
+export interface TimeSlot {
+  id: string;
+  label: string;
+  /** Format HH:MM:SS. */
+  startTime: string;
+  endTime: string;
+  sequence: number;
+  isBreak: boolean;
+}
+
+/** Une séance posée dans la grille. */
+export interface ScheduleCell {
+  id: string;
+  dayOfWeek: DayOfWeek;
+  timeSlotId: string;
+  subject: { id: string; name: string; shortName: string | null };
+  teacher: { id: string; email: string };
+  classRoom: { id: string; name: string };
+  teachingAssignmentId: string;
+}
+
+export interface ScheduleGrid {
+  academicYear: { id: string; label: string };
+  slots: TimeSlot[];
+  entries: ScheduleCell[];
+}
+
+/** Une affectation, avec le nombre de séances déjà placées. */
+export interface AssignmentUsage {
+  id: string;
+  subject: { id: string; name: string; shortName: string | null };
+  teacher: { id: string; email: string };
+  classRoom: { id: string; name: string };
+  scheduledCount: number;
+}
