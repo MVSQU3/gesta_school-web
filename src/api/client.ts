@@ -11,12 +11,12 @@ import { useAuthStore } from '../store/useAuthStore';
  * convient au développement et casse bruyamment en production plutôt que de
  * laisser croire à un fonctionnement normal.
  */
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1';
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
 
 if (import.meta.env.PROD && !import.meta.env.VITE_API_URL) {
   console.error(
     "VITE_API_URL n'était pas définie au build : l'application interroge " +
-      'http://localhost:3000, elle ne fonctionnera pas en dehors du poste du ' +
+      'http://localhost:3001, elle ne fonctionnera pas en dehors du poste du ' +
       'développeur.',
   );
 }

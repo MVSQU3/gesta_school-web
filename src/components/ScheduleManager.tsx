@@ -300,7 +300,6 @@ const EMPTY_SLOT = {
   label: '',
   startTime: '',
   endTime: '',
-  sequence: 1,
   isBreak: false,
 };
 
@@ -315,10 +314,10 @@ const TimeSlotsPane: React.FC = () => {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     save.mutate(
-      { ...form, sequence: form.sequence || nextSequence },
+      { ...form, sequence: nextSequence },
       {
         onSuccess: () => {
-          setForm({ ...EMPTY_SLOT, sequence: nextSequence + 1 });
+          setForm(EMPTY_SLOT);
           toast.success('Créneau ajouté.');
         },
         onError: (err) =>
