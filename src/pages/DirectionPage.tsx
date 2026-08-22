@@ -45,6 +45,7 @@ import { StudentsExplorer } from "../components/StudentsExplorer";
 import { TransfersManager } from "../components/TransfersManager";
 import { ScheduleManager } from "../components/ScheduleManager";
 import { Role } from "../types";
+import { useAuthStore } from "../store/useAuthStore";
 
 /* ─── Sous-composant : onglet actif ──────────────────────────────── */
 type Tab =
@@ -91,6 +92,8 @@ const TabButton: React.FC<{
 export const DirectionPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
 
+  const { user } = useAuthStore();
+  console.log(user);
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* En-tête */}
@@ -100,7 +103,7 @@ export const DirectionPage: React.FC = () => {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
-            Espace Direction
+            Espace Direction {user?.slug}
           </h1>
           <p className="text-slate-500 mt-1">
             Gérez votre personnel, vos années scolaires et vos salles de classe.
@@ -131,13 +134,13 @@ export const DirectionPage: React.FC = () => {
           label="Salle de Classe"
           color="bg-violet-600"
         />
-          <TabButton
-            active={activeTab === "matieres"}
-            onClick={() => setActiveTab("matieres")}
-            icon={<Layers className="w-4 h-4" />}
-            label="Matières & Coefficients"
-            color="bg-fuchsia-600"
-          />
+        <TabButton
+          active={activeTab === "matieres"}
+          onClick={() => setActiveTab("matieres")}
+          icon={<Layers className="w-4 h-4" />}
+          label="Matières & Coefficients"
+          color="bg-fuchsia-600"
+        />
         <TabButton
           active={activeTab === "personnel"}
           onClick={() => setActiveTab("personnel")}
@@ -145,13 +148,13 @@ export const DirectionPage: React.FC = () => {
           label="Personnel"
           color="bg-indigo-600"
         />
-          <TabButton
-            active={activeTab === "enseignants"}
-            onClick={() => setActiveTab("enseignants")}
-            icon={<GraduationCap className="w-4 h-4" />}
-            label="Enseignants"
-            color="bg-sky-600"
-          />
+        <TabButton
+          active={activeTab === "enseignants"}
+          onClick={() => setActiveTab("enseignants")}
+          icon={<GraduationCap className="w-4 h-4" />}
+          label="Enseignants"
+          color="bg-sky-600"
+        />
         <TabButton
           active={activeTab === "edt"}
           onClick={() => setActiveTab("edt")}
