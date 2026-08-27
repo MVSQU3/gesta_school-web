@@ -23,6 +23,7 @@ import { EditDossierModal } from './EditDossierModal';
 import { StudentHistoryModal } from './StudentHistoryModal';
 import { downloadCsv } from '../api/downloadPdf';
 import toast from 'react-hot-toast';
+import { QueryPanel } from './QueryPanel';
 
 const formatFcfa = (value: number) => `${Number(value).toLocaleString('fr-FR')} FCFA`;
 
@@ -85,7 +86,7 @@ export const DossiersTable: React.FC = () => {
   const { data: classRooms = [] } = useClassRooms();
   const { data: academicYears = [] } = useAcademicYears();
 
-  const { data, isLoading, isFetching, refetch } = useEnrollmentsList({
+  const dossiers = useEnrollmentsList({
     search,
     status,
     academicYearId,
@@ -94,6 +95,7 @@ export const DossiersTable: React.FC = () => {
     limit: 20,
     schoolId: currentSchool?.id,
   });
+  const { data, isLoading, isFetching, refetch } = dossiers;
 
   const items: Enrollment[] = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -200,7 +202,19 @@ export const DossiersTable: React.FC = () => {
       </div>
 
       {/* Tableau */}
-      {isLoading ? (
+      {/*
+        « Aucun dossier ne correspond aux filtres » affirme que la recherche a
+        abouti. En cas d'échec, elle n'a pas abouti — et le secrétariat
+        remanierait ses filtres pour rien.
+      */}
+      {dossiers.error ? (
+        <QueryPanel
+          query={dossiers}
+          fallback="La liste des dossiers est momentanément indisponible."
+        >
+          {null}
+        </QueryPanel>
+      ) : isLoading ? (
         <p className="text-sm text-slate-400 py-10 text-center">Chargement des dossiers...</p>
       ) : items.length === 0 ? (
         <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center">

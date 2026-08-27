@@ -16,6 +16,7 @@ import {
 } from '../types';
 import { useStudentFile } from '../hooks/useStudents';
 import { useSchoolStore } from '../store/useSchoolStore';
+import { errorMessage } from '../api/errorMessage';
 
 const formatFcfa = (value: number) => `${Number(value).toLocaleString('fr-FR')} FCFA`;
 
@@ -52,11 +53,12 @@ export const StudentFileView: React.FC<Props> = ({
   onSelectYear,
 }) => {
   const { currentSchool } = useSchoolStore();
-  const { data, isLoading, isError, isFetching } = useStudentFile(
+  const fileQuery = useStudentFile(
     studentId,
     academicYearId,
     currentSchool?.id,
   );
+  const { data, isLoading, isError, isFetching } = fileQuery;
 
   if (isLoading) {
     return (
@@ -70,7 +72,13 @@ export const StudentFileView: React.FC<Props> = ({
   if (isError || !data) {
     return (
       <p className="p-10 text-center text-sm text-red-600">
-        Impossible de charger le dossier de cet élève.
+        {/* Le motif du serveur plutôt qu'un message maison : « transfert
+            refusé » et « dossier introuvable » n'appellent pas la même
+            réaction du secrétariat. */}
+        {errorMessage(
+          fileQuery.error,
+          "Impossible de charger le dossier de cet élève.",
+        )}
       </p>
     );
   }

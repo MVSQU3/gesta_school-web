@@ -27,11 +27,7 @@ import {
 import { useClassRooms } from '../hooks/useClasses';
 import { useSchoolStore } from '../store/useSchoolStore';
 import { ScheduleGridView, formatHour } from './ScheduleGridView';
-
-const errorMessage = (err: any, fallback: string) => {
-  const msg = err?.response?.data?.message || fallback;
-  return Array.isArray(msg) ? msg[0] : msg;
-};
+import { errorMessage } from '../api/errorMessage';
 
 type Pane = 'grille' | 'horaires';
 

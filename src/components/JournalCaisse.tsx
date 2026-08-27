@@ -30,6 +30,7 @@ import { useSchoolStore } from '../store/useSchoolStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { ReceiptModal } from './ReceiptModal';
 import { CancelPaymentModal } from './CancelPaymentModal';
+import { QueryPanel } from './QueryPanel';
 
 const formatFcfa = (value: number) => `${Number(value).toLocaleString('fr-FR')} FCFA`;
 
@@ -110,7 +111,7 @@ export const JournalCaisse: React.FC = () => {
     );
   };
 
-  const { data, isLoading, isFetching, refetch } = useCashJournal({
+  const journal = useCashJournal({
     from,
     to,
     method,
@@ -118,6 +119,7 @@ export const JournalCaisse: React.FC = () => {
     limit: 25,
     schoolId: currentSchool?.id,
   });
+  const { data, isLoading, isFetching, refetch } = journal;
 
   const items: Payment[] = data?.items ?? [];
   const summary = data?.summary;
@@ -287,7 +289,19 @@ export const JournalCaisse: React.FC = () => {
       )}
 
       {/* Tableau des versements */}
-      {isLoading ? (
+      {/*
+        L'échec passe avant « Aucun encaissement » : un comptable qui clôture
+        sa caisse conclurait que la journée n'a rien encaissé, alors que le
+        serveur n'a simplement pas répondu.
+      */}
+      {journal.error ? (
+        <QueryPanel
+          query={journal}
+          fallback="Le journal de caisse est momentanément indisponible."
+        >
+          {null}
+        </QueryPanel>
+      ) : isLoading ? (
         <p className="text-sm text-slate-400 py-10 text-center">Chargement du journal...</p>
       ) : items.length === 0 ? (
         <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center">

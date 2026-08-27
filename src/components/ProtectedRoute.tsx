@@ -21,6 +21,7 @@ export function homeRouteForRoles(roles: Role[]): string {
   if (roles.includes(Role.SECRETARY)) return '/';
   if (roles.includes(Role.ACCOUNTANT)) return '/caisse';
   if (roles.includes(Role.TEACHER)) return '/enseignant';
+  if (roles.includes(Role.PARENT)) return '/mon-espace';
   return '/login';
 }
 

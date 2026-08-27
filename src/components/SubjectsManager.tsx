@@ -11,6 +11,8 @@ import {
   X,
 } from 'lucide-react';
 import { useClassRooms } from '../hooks/useClasses';
+import { QueryPanel } from './QueryPanel';
+import { errorMessage } from '../api/errorMessage';
 import {
   useAssignSubject,
   useClassProgram,
@@ -21,11 +23,6 @@ import {
   useUpdateCoefficient,
   useUpdateSubject,
 } from '../hooks/useGrading';
-
-const errorMessage = (err: any, fallback: string) => {
-  const msg = err?.response?.data?.message || fallback;
-  return Array.isArray(msg) ? msg[0] : msg;
-};
 
 export const SubjectsManager: React.FC = () => {
   return (
@@ -38,7 +35,8 @@ export const SubjectsManager: React.FC = () => {
 
 /* ─── Catalogue des matières de l'établissement ──────────────────── */
 const SubjectCatalog: React.FC = () => {
-  const { data: subjects = [], isLoading } = useSubjects();
+  const subjectsQuery = useSubjects();
+  const { data: subjects = [], isLoading } = subjectsQuery;
   const createMutation = useCreateSubject();
   const updateMutation = useUpdateSubject();
   const deleteMutation = useDeleteSubject();
@@ -120,7 +118,14 @@ const SubjectCatalog: React.FC = () => {
         </button>
       </form>
 
-      {isLoading ? (
+      {subjectsQuery.error ? (
+        <QueryPanel
+          query={subjectsQuery}
+          fallback="La liste des matières est momentanément indisponible."
+        >
+          {null}
+        </QueryPanel>
+      ) : isLoading ? (
         <p className="text-sm text-slate-400">Chargement...</p>
       ) : subjects.length === 0 ? (
         <div className="text-center py-8 text-slate-400">

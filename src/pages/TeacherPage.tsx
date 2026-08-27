@@ -25,11 +25,8 @@ import {
 } from '../hooks/useGrading';
 import { GradeSheetEditor } from '../components/GradeSheetEditor';
 import { MyScheduleCard } from '../components/MyScheduleCard';
-
-const errorMessage = (err: any, fallback: string) => {
-  const msg = err?.response?.data?.message || fallback;
-  return Array.isArray(msg) ? msg[0] : msg;
-};
+import { QueryPanel } from '../components/QueryPanel';
+import { errorMessage } from '../api/errorMessage';
 
 const todayIso = () => {
   const d = new Date();
@@ -43,8 +40,10 @@ export const TeacherPage: React.FC = () => {
     [years],
   );
 
-  const { data: assignments = [], isLoading: loadingAssignments } =
+  const assignmentsQuery =
     useMyAssignments(activeYear?.id);
+  const { data: assignments = [], isLoading: loadingAssignments } =
+    assignmentsQuery;
   const { data: periods = [] } = useGradingPeriods(activeYear?.id);
 
   const [assignmentId, setAssignmentId] = useState('');
@@ -98,6 +97,21 @@ export const TeacherPage: React.FC = () => {
       <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-10 text-center">
         <p className="text-sm text-slate-400">Chargement de vos classes...</p>
       </div>
+    );
+  }
+
+  /*
+   * Un échec ne doit pas se lire « Aucune classe ne vous est affectée » :
+   * l'enseignant irait réclamer une affectation qu'il a déjà.
+   */
+  if (assignmentsQuery.error) {
+    return (
+      <QueryPanel
+        query={assignmentsQuery}
+        fallback="Vos affectations sont momentanément indisponibles."
+      >
+        {null}
+      </QueryPanel>
     );
   }
 

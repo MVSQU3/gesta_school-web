@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { Loader2, Save, UserX, X } from 'lucide-react';
 import { EVALUATION_TYPE_LABELS, type GradeSheetRow } from '../types';
 import { useGradeSheet, useSaveGrades } from '../hooks/useGrading';
+import { errorMessage } from '../api/errorMessage';
 
 interface Props {
   evaluationId: string;
@@ -20,7 +21,8 @@ interface RowState {
 }
 
 export const GradeSheetEditor: React.FC<Props> = ({ evaluationId, onClose }) => {
-  const { data, isLoading } = useGradeSheet(evaluationId);
+  const sheet = useGradeSheet(evaluationId);
+  const { data, isLoading } = sheet;
   const saveMutation = useSaveGrades();
   const [rows, setRows] = useState<RowState[]>([]);
 
@@ -177,7 +179,16 @@ export const GradeSheetEditor: React.FC<Props> = ({ evaluationId, onClose }) => 
 
         {/* Liste des élèves */}
         <div className="p-6 sm:p-8 pt-5">
-          {isLoading ? (
+          {sheet.error ? (
+            /*
+              Une erreur ne doit pas se lire « aucun élève inscrit » : un
+              enseignant conclurait que sa classe est vide et irait le
+              signaler au secrétariat.
+            */
+            <p className="text-sm text-red-600 py-8 text-center">
+              {errorMessage(sheet.error, 'Feuille de notes indisponible.')}
+            </p>
+          ) : isLoading ? (
             <p className="text-sm text-slate-400 py-8 text-center">
               Chargement de la classe...
             </p>

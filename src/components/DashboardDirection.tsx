@@ -14,6 +14,7 @@ import {
   PAYMENT_METHOD_LABELS,
 } from '../types';
 import { useDashboard } from '../hooks/useDashboard';
+import { QueryPanel } from './QueryPanel';
 import { useAcademicYears } from '../hooks/useClasses';
 
 const formatFcfa = (value: number) => `${Number(value).toLocaleString('fr-FR')} FCFA`;
@@ -49,13 +50,25 @@ const StatCard: React.FC<{
 export const DashboardDirection: React.FC = () => {
   const [academicYearId, setAcademicYearId] = useState('');
   const { data: years = [] } = useAcademicYears();
-  const { data, isLoading } = useDashboard(academicYearId || undefined);
+  const dashboard = useDashboard(academicYearId || undefined);
+  const { data, isLoading } = dashboard;
 
-  if (isLoading) {
+  /**
+   * L'échec est traité avant l'absence d'année.
+   *
+   * Sans cette branche, une API en panne rendait `data` indéfini et l'écran
+   * concluait « Aucune année scolaire configurée » — un diagnostic faux, qui
+   * envoie le directeur créer une année qui existe déjà.
+   */
+  if (dashboard.error || isLoading) {
     return (
-      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-10 text-center">
-        <p className="text-sm text-slate-400">Chargement des statistiques...</p>
-      </div>
+      <QueryPanel
+        query={dashboard}
+        loading="Chargement des statistiques…"
+        fallback="Les statistiques sont momentanément indisponibles."
+      >
+        {null}
+      </QueryPanel>
     );
   }
 

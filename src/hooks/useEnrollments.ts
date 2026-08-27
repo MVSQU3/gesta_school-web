@@ -68,13 +68,25 @@ export function useCreateEnrollment() {
   });
 }
 
-export function useExpiredEnrollments(schoolId: string | undefined) {
+/**
+ * Dossiers expirés d'une année.
+ *
+ * Sans `academicYearId`, le serveur borne à l'année en cours — sans quoi
+ * l'écran de rattrapage cumulerait les dossiers morts de toutes les rentrées
+ * passées. L'année reste transmissible pour consulter les précédentes.
+ */
+export function useExpiredEnrollments(
+  schoolId: string | undefined,
+  academicYearId?: string,
+) {
   return useQuery({
-    queryKey: ['enrollments', 'expired', schoolId],
+    queryKey: ['enrollments', 'expired', schoolId, academicYearId ?? ''],
     enabled: !!schoolId,
     queryFn: async () => {
+      const params = new URLSearchParams({ schoolId: schoolId as string });
+      if (academicYearId) params.append('academicYearId', academicYearId);
       const { data } = await apiClient.get<Enrollment[]>(
-        `/enrollments/expired?schoolId=${schoolId}`,
+        `/enrollments/expired?${params.toString()}`,
       );
       return data;
     },

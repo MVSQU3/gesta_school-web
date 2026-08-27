@@ -29,14 +29,10 @@ import {
   useSharedFile,
 } from '../hooks/useTransfers';
 import { useSchoolStore } from '../store/useSchoolStore';
+import { errorMessage } from '../api/errorMessage';
 
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString('fr-FR') : '—';
-
-const errorMessage = (err: any, fallback: string) => {
-  const msg = err?.response?.data?.message || fallback;
-  return Array.isArray(msg) ? msg[0] : msg;
-};
 
 const STATUS_TONES: Record<TransferStatus, string> = {
   [TransferStatus.PENDING]: 'bg-amber-100 text-amber-700',

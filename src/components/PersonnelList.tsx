@@ -10,15 +10,13 @@ import {
 } from '../hooks/useUsers';
 import { useAuthStore } from '../store/useAuthStore';
 import { ResetPasswordModal } from './ResetPasswordModal';
-
-const errorMessage = (err: any, fallback: string) => {
-  const msg = err?.response?.data?.message || fallback;
-  return Array.isArray(msg) ? msg[0] : msg;
-};
+import { QueryPanel } from './QueryPanel';
+import { errorMessage } from '../api/errorMessage';
 
 export const PersonnelList: React.FC = () => {
   const currentUser = useAuthStore((s) => s.user);
-  const { data: staff = [], isLoading } = useStaff();
+  const staffQuery = useStaff();
+  const { data: staff = [], isLoading } = staffQuery;
   const updateMutation = useUpdateStaff();
   const statusMutation = useSetStaffStatus();
   const deleteMutation = useDeleteStaff();
@@ -76,8 +74,16 @@ export const PersonnelList: React.FC = () => {
     });
   };
 
-  if (isLoading) {
-    return <p className="text-sm text-slate-400 py-6">Chargement du personnel...</p>;
+  if (staffQuery.error || isLoading) {
+    return (
+      <QueryPanel
+        query={staffQuery}
+        loading="Chargement du personnel…"
+        fallback="La liste du personnel est momentanément indisponible."
+      >
+        {null}
+      </QueryPanel>
+    );
   }
 
   return (

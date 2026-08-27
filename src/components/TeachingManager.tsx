@@ -10,11 +10,8 @@ import {
   useDeleteAssignment,
   useSubjects,
 } from '../hooks/useGrading';
-
-const errorMessage = (err: any, fallback: string) => {
-  const msg = err?.response?.data?.message || fallback;
-  return Array.isArray(msg) ? msg[0] : msg;
-};
+import { errorMessage } from '../api/errorMessage';
+import { QueryPanel } from './QueryPanel';
 
 export const TeachingManager: React.FC = () => {
   const { data: years = [] } = useAcademicYears();
@@ -29,7 +26,8 @@ export const TeachingManager: React.FC = () => {
     }
   }, [years, academicYearId]);
 
-  const { data: assignments = [], isLoading } = useAssignments(academicYearId);
+  const assignmentsQuery = useAssignments(academicYearId);
+  const { data: assignments = [], isLoading } = assignmentsQuery;
   const createMutation = useCreateAssignment();
   const deleteMutation = useDeleteAssignment();
 
@@ -203,7 +201,14 @@ export const TeachingManager: React.FC = () => {
           </span>
         </h2>
 
-        {isLoading ? (
+        {assignmentsQuery.error ? (
+          <QueryPanel
+            query={assignmentsQuery}
+            fallback="Les affectations sont momentanément indisponibles."
+          >
+            {null}
+          </QueryPanel>
+        ) : isLoading ? (
           <p className="text-sm text-slate-400">Chargement...</p>
         ) : grouped.length === 0 ? (
           <div className="text-center py-8 text-slate-400">

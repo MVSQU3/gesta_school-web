@@ -1,9 +1,22 @@
+/** Découpage de l'année scolaire retenu par l'établissement. */
+export enum PeriodSystem {
+  TRIMESTER = 'TRIMESTER',
+  SEMESTER = 'SEMESTER',
+}
+
+export const PERIOD_SYSTEM_LABELS: Record<PeriodSystem, string> = {
+  [PeriodSystem.TRIMESTER]: '3 trimestres',
+  [PeriodSystem.SEMESTER]: '2 semestres',
+};
+
 export interface School {
   id: string;
   name: string;
   slug: string;
   address?: string;
   phone?: string;
+  /** Détermine les périodes créées à l'ouverture d'une année scolaire. */
+  periodSystem?: PeriodSystem;
 }
 
 export interface Student {
@@ -122,11 +135,20 @@ export enum Role {
   ACCOUNTANT = 'ACCOUNTANT',
   /** Saisit les notes des matières et classes qui lui sont affectées. */
   TEACHER = 'TEACHER',
+  /**
+   * Parent ou tuteur. Rôle en lecture seule, borné aux élèves qui lui sont
+   * nommément rattachés — et non à l'établissement entier.
+   */
+  PARENT = 'PARENT',
 }
 
 export interface User {
   id: string;
   email: string;
+  /** Renseignés pour les comptes parents ; facultatifs pour le personnel. */
+  firstName?: string | null;
+  lastName?: string | null;
+  phone?: string | null;
   roles: Role[];
   slug: string;
   isActive: boolean;
@@ -146,6 +168,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   [Role.SECRETARY]: 'Secrétaire',
   [Role.ACCOUNTANT]: 'Comptable',
   [Role.TEACHER]: 'Enseignant',
+  [Role.PARENT]: 'Parent',
 };
 
 /* ─── Notation et assiduité ──────────────────────────────────────── */
@@ -287,13 +310,6 @@ export interface StudentBulletin {
   average: number | null;
   rank: number | null;
   classSize: number;
-  /** Détail par matière, tel qu'il figure au bulletin. */
-  subjects: {
-    name: string;
-    coefficient: number;
-    average: number | null;
-    classAverage: number | null;
-  }[];
   absences: { justified: number; unjustified: number };
 }
 
@@ -486,6 +502,11 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   SCHOOL_CREATED: 'Établissement créé',
   SCHOOL_UPDATED: 'Établissement modifié',
   SCHOOL_DELETED: 'Établissement supprimé',
+  PAYMENT_RECEIVED: 'Versement encaissé',
+  PAYMENT_CANCELLED: 'Versement annulé',
+  PARENT_CREATED: 'Compte parent créé',
+  PARENT_CHILD_LINKED: 'Enfant rattaché à un parent',
+  PARENT_CHILD_UNLINKED: 'Enfant détaché d’un parent',
 };
 
 /* ─── Transfert de dossier entre établissements ─────────────────────────── */
@@ -616,4 +637,107 @@ export interface AssignmentUsage {
   teacher: { id: string; email: string };
   classRoom: { id: string; name: string };
   scheduledCount: number;
+}
+
+/* ─── Espace parent ──────────────────────────────────────────────── */
+
+/** Sexe déclaré d'un compte parent : désigne le père ou la mère. */
+export enum Gender {
+  MALE = 'MALE',
+  FEMALE = 'FEMALE',
+}
+
+/** Qualité du parent, telle qu'affichée à l'écran. */
+export const GENDER_LABELS: Record<Gender, string> = {
+  [Gender.MALE]: 'Père',
+  [Gender.FEMALE]: 'Mère',
+};
+
+/** Un enfant rattaché, tel que le voit le secrétariat. */
+export interface ParentChildLink {
+  studentId: string;
+  fullName: string;
+}
+
+/** Compte parent dans la liste du secrétariat. */
+export interface Parent {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  phone: string | null;
+  /** Male ou Female. Nul pour les comptes créés avant l'ajout du champ. */
+  gender: Gender | null;
+  isActive: boolean;
+  mustChangePassword: boolean;
+  createdAt: string;
+  children: ParentChildLink[];
+}
+
+/**
+ * Un enfant vu depuis l'espace parent, avec son dossier de l'année en cours.
+ * `enrollment` est nul tant qu'aucune inscription n'a été saisie.
+ */
+export interface ParentChild {
+  studentId: string;
+  firstName: string;
+  lastName: string;
+  enrollment: {
+    id: string;
+    reference: string;
+    status: EnrollmentStatus;
+    expiresAt: string;
+    classRoom?: ClassRoom;
+    /** `isActive` permet à l'écran d'annoncer une année clôturée. */
+    academicYear?: AcademicYear;
+    balance: EnrollmentBalance;
+  } | null;
+}
+
+/** Année consultable depuis l'espace parent. */
+export interface ParentYear {
+  id: string;
+  label: string;
+  isActive: boolean;
+}
+
+/** Détail financier d'un dossier, côté parent. */
+export interface ParentChildFinance {
+  enrollment: {
+    id: string;
+    reference: string;
+    status: EnrollmentStatus;
+    classRoom?: ClassRoom;
+    academicYear?: AcademicYear;
+  };
+  balance: EnrollmentBalance;
+  payments: {
+    id: string;
+    amount: number;
+    method: PaymentMethod;
+    receiptNumber: string;
+    paidAt: string;
+    cancelledAt: string | null;
+    cancellationReason: string | null;
+  }[];
+}
+
+/** Une note individuelle, telle que la voit un parent. */
+export interface ParentGrade {
+  id: string;
+  title: string;
+  type: EvaluationType;
+  date: string;
+  /** Note brute, sur `maxScore`. `null` si l'élève était absent. */
+  score: number | null;
+  maxScore: number;
+  isAbsent: boolean;
+  comment: string | null;
+}
+
+/** Les notes d'une matière sur une période. */
+export interface ParentSubjectGrades {
+  subjectId: string;
+  name: string;
+  grades: ParentGrade[];
 }

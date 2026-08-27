@@ -12,6 +12,7 @@ import { AUDIT_ACTION_LABELS, type AuditLog } from '../types';
 import { useAuditLog } from '../hooks/useAudit';
 import { downloadCsv } from '../api/downloadPdf';
 import { useSchoolStore } from '../store/useSchoolStore';
+import { QueryPanel } from './QueryPanel';
 
 const formatDateTime = (value: string) =>
   new Date(value).toLocaleString('fr-FR', {
@@ -28,6 +29,10 @@ const toneFor = (action: string): string => {
   if (action.startsWith('CLASSROOM_')) return 'bg-violet-100 text-violet-700';
   if (action.startsWith('ENROLLMENT_')) return 'bg-sky-100 text-sky-700';
   if (action.startsWith('STUDENT_')) return 'bg-emerald-100 text-emerald-700';
+  // La caisse en ambre : c'est la couleur des écrans financiers, et ce sont
+  // les lignes qu'on cherche en priorité dans un journal.
+  if (action.startsWith('PAYMENT_')) return 'bg-amber-100 text-amber-700';
+  if (action.startsWith('PARENT_')) return 'bg-rose-100 text-rose-700';
   return 'bg-slate-100 text-slate-600';
 };
 
@@ -47,7 +52,7 @@ export const AuditLogTable: React.FC = () => {
   const [exporting, setExporting] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const { data, isLoading, isFetching, refetch } = useAuditLog({
+  const logs = useAuditLog({
     action,
     from,
     to,
@@ -55,6 +60,7 @@ export const AuditLogTable: React.FC = () => {
     limit: 30,
     schoolId: currentSchool?.id,
   });
+  const { data, isLoading, isFetching, refetch } = logs;
 
   const items: AuditLog[] = data?.items ?? [];
   const totalPages = data?.totalPages ?? 1;
@@ -157,7 +163,14 @@ export const AuditLogTable: React.FC = () => {
         />
       </div>
 
-      {isLoading ? (
+      {logs.error ? (
+        <QueryPanel
+          query={logs}
+          fallback="Le journal d'audit est momentanément indisponible."
+        >
+          {null}
+        </QueryPanel>
+      ) : isLoading ? (
         <p className="text-sm text-slate-400 py-10 text-center">
           Chargement du journal...
         </p>

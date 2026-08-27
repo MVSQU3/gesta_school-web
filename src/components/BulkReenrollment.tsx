@@ -13,15 +13,9 @@ import { useBulkEnroll, useEnrollmentsList } from '../hooks/useEnrollments';
 import type { BulkEnrollResult } from '../hooks/useEnrollments';
 import { useAcademicYears, useClassRooms } from '../hooks/useClasses';
 import { useSchoolStore } from '../store/useSchoolStore';
+import { errorMessage } from '../api/errorMessage';
 
 const formatFcfa = (value: number) => `${Number(value).toLocaleString('fr-FR')} FCFA`;
-
-const errorMessage = (err: unknown, fallback: string): string => {
-  const msg = (err as { response?: { data?: { message?: string | string[] } } })
-    ?.response?.data?.message;
-  if (Array.isArray(msg)) return msg[0];
-  return msg ?? fallback;
-};
 
 /**
  * Réinscription en masse : faire monter une classe entière d'une année sur
@@ -55,7 +49,7 @@ export const BulkReenrollment: React.FC = () => {
   const bulkEnroll = useBulkEnroll();
 
   const ready = !!sourceYearId && !!sourceClassId;
-  const { data, isFetching } = useEnrollmentsList(
+  const source = useEnrollmentsList(
     {
       academicYearId: sourceYearId,
       classRoomId: sourceClassId,
@@ -64,6 +58,7 @@ export const BulkReenrollment: React.FC = () => {
     },
     { enabled: ready },
   );
+  const { data, isFetching } = source;
 
   // Un dossier expiré n'a jamais donné lieu au moindre versement : l'élève
   // n'a pas réellement fait l'année, il n'a pas à être promu par défaut.
@@ -218,7 +213,12 @@ export const BulkReenrollment: React.FC = () => {
       {/* Liste des élèves */}
       {ready && (
         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 sm:p-8">
-          {isFetching ? (
+          {source.error ? (
+            /* « Aucun élève à réinscrire » ferait croire la classe déjà traitée. */
+            <p className="text-sm text-red-600 py-8 text-center">
+              {errorMessage(source.error, 'Liste des candidats indisponible.')}
+            </p>
+          ) : isFetching ? (
             <p className="text-sm text-slate-400 py-8 text-center">
               Chargement de la classe...
             </p>

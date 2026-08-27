@@ -23,6 +23,7 @@ import {
   useSearchEnrollmentByRef,
 } from '../hooks/useEnrollments';
 import { useSchoolStore } from '../store/useSchoolStore';
+import { errorMessage } from '../api/errorMessage';
 
 const formatFcfa = (value: number) => `${Number(value).toLocaleString('fr-FR')} FCFA`;
 
@@ -51,10 +52,11 @@ export const CaisseGuichet: React.FC = () => {
    */
   const [lookup, setLookup] = useState('');
   const trimmedLookup = lookup.trim();
-  const { data: matches, isFetching: isLooking } = useEnrollmentsList(
+  const lookupQuery = useEnrollmentsList(
     { search: trimmedLookup, limit: 8, schoolId: currentSchool?.id },
     { enabled: trimmedLookup.length >= 2 },
   );
+  const { data: matches, isFetching: isLooking } = lookupQuery;
 
   const loadByReference = (ref: string) => {
     setSearching(true);
@@ -189,7 +191,15 @@ export const CaisseGuichet: React.FC = () => {
 
           {trimmedLookup.length >= 2 && (
             <div className="mt-3 space-y-2">
-              {isLooking && !matches ? (
+              {lookupQuery.error ? (
+                /*
+                  « Aucun dossier ne correspond » enverrait la famille au
+                  secrétariat vérifier une référence pourtant valide.
+                */
+                <p className="text-xs text-red-600 px-1">
+                  {errorMessage(lookupQuery.error, 'Recherche indisponible.')}
+                </p>
+              ) : isLooking && !matches ? (
                 <p className="text-xs text-slate-400 px-1">Recherche...</p>
               ) : (matches?.items.length ?? 0) === 0 ? (
                 <p className="text-xs text-slate-400 px-1">

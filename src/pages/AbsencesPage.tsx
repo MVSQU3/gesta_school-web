@@ -13,11 +13,8 @@ import { useAcademicYears, useClassRooms } from '../hooks/useClasses';
 import { useMyAssignments } from '../hooks/useGrading';
 import { useRecordAbsences, useRollCall } from '../hooks/useAbsences';
 import { useAuthStore } from '../store/useAuthStore';
-
-const errorMessage = (err: any, fallback: string) => {
-  const msg = err?.response?.data?.message || fallback;
-  return Array.isArray(msg) ? msg[0] : msg;
-};
+import { errorMessage } from '../api/errorMessage';
+import { QueryPanel } from '../components/QueryPanel';
 
 const todayIso = () => {
   const d = new Date();
@@ -97,11 +94,12 @@ export const AbsencesPage: React.FC = () => {
     if (classRooms.length > 0 && !classRoomId) setClassRoomId(classRooms[0].id);
   }, [classRooms, classRoomId]);
 
-  const { data, isLoading, isFetching } = useRollCall(
+  const rollCall = useRollCall(
     classRoomId,
     activeYear?.id,
     date,
   );
+  const { data, isLoading, isFetching } = rollCall;
   const recordMutation = useRecordAbsences();
 
   const [rows, setRows] = useState<RowState[]>([]);
@@ -298,7 +296,14 @@ export const AbsencesPage: React.FC = () => {
           </div>
         </div>
 
-        {isLoading ? (
+        {rollCall.error ? (
+          <QueryPanel
+            query={rollCall}
+            fallback="L'appel est momentanément indisponible."
+          >
+            {null}
+          </QueryPanel>
+        ) : isLoading ? (
           <p className="text-sm text-slate-400 py-8 text-center">
             Chargement de la classe...
           </p>

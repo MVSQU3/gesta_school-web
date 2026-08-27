@@ -5,9 +5,12 @@ import { useCreateSchool, useDeleteSchool, useSchools, useUpdateSchool } from '.
 import { useAdminCreateUser } from '../hooks/useUsers';
 import { SchoolStaffPanel } from '../components/SchoolStaffPanel';
 import { Role, type School } from '../types';
+import { QueryPanel } from '../components/QueryPanel';
+import { PERIOD_SYSTEM_LABELS, PeriodSystem } from '../types';
 
 export const AdminSchoolsPage: React.FC = () => {
-  const { data: schools = [], isLoading } = useSchools();
+  const schoolsQuery = useSchools();
+  const { data: schools = [], isLoading } = schoolsQuery;
   const createSchoolMutation = useCreateSchool();
   const updateSchoolMutation = useUpdateSchool();
   const deleteSchoolMutation = useDeleteSchool();
@@ -23,6 +26,9 @@ export const AdminSchoolsPage: React.FC = () => {
   // Form Fields — école
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
+  const [periodSystem, setPeriodSystem] = useState<PeriodSystem>(
+    PeriodSystem.TRIMESTER,
+  );
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
 
@@ -55,6 +61,7 @@ export const AdminSchoolsPage: React.FC = () => {
     setEditingSchool(school);
     setName(school.name);
     setSlug(school.slug);
+    setPeriodSystem(school.periodSystem ?? PeriodSystem.TRIMESTER);
     setAddress(school.address || '');
     setPhone(school.phone || '');
   };
@@ -62,7 +69,7 @@ export const AdminSchoolsPage: React.FC = () => {
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createSchoolMutation.mutate(
-      { name, slug: slug.toUpperCase(), address, phone },
+      { name, slug: slug.toUpperCase(), address, phone, periodSystem },
       {
         onSuccess: (data) => {
           toast.success(`Établissement "${data.name}" (${data.slug}) créé avec succès !`);
@@ -84,7 +91,7 @@ export const AdminSchoolsPage: React.FC = () => {
     updateSchoolMutation.mutate(
       {
         id: editingSchool.id,
-        data: { name, slug: slug.toUpperCase(), address, phone },
+        data: { name, slug: slug.toUpperCase(), address, phone, periodSystem },
       },
       {
         onSuccess: (data) => {
@@ -219,7 +226,14 @@ export const AdminSchoolsPage: React.FC = () => {
           <span className="text-xs text-slate-400 font-mono font-medium">{schools.length} enregistrements</span>
         </div>
 
-        {isLoading ? (
+        {schoolsQuery.error ? (
+          <QueryPanel
+            query={schoolsQuery}
+            fallback="La liste des établissements est momentanément indisponible."
+          >
+            {null}
+          </QueryPanel>
+        ) : isLoading ? (
           <div className="text-center py-12 text-slate-400 text-sm font-mono">Chargement des établissements...</div>
         ) : schools.length === 0 ? (
           <div className="text-center py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
@@ -358,6 +372,27 @@ export const AdminSchoolsPage: React.FC = () => {
                 />
                 <span className="text-[11px] text-slate-400 mt-0.5 block">
                   Sera utilisé dans les tickets (ex: INS-CSM-26-0001)
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  Découpage de l'année *
+                </label>
+                <select
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-sm"
+                  value={periodSystem}
+                  onChange={(e) => setPeriodSystem(e.target.value as PeriodSystem)}
+                >
+                  <option value={PeriodSystem.TRIMESTER}>
+                    {PERIOD_SYSTEM_LABELS[PeriodSystem.TRIMESTER]}
+                  </option>
+                  <option value={PeriodSystem.SEMESTER}>
+                    {PERIOD_SYSTEM_LABELS[PeriodSystem.SEMESTER]}
+                  </option>
+                </select>
+                <span className="text-[11px] text-slate-400 mt-0.5 block">
+                  Périodes de notation créées à l'ouverture d'une année scolaire
                 </span>
               </div>
 

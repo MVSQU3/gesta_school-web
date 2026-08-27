@@ -4,11 +4,7 @@ import { KeyRound, Power, ShieldCheck, Users, X } from 'lucide-react';
 import { Role, ROLE_LABELS, type School, type User } from '../types';
 import { useSchoolStaff, useSetStaffStatus } from '../hooks/useUsers';
 import { ResetPasswordModal } from './ResetPasswordModal';
-
-const errorMessage = (err: any, fallback: string) => {
-  const msg = err?.response?.data?.message || fallback;
-  return Array.isArray(msg) ? msg[0] : msg;
-};
+import { errorMessage } from '../api/errorMessage';
 
 interface Props {
   school: School;

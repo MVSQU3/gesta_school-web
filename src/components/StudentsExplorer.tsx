@@ -3,6 +3,7 @@ import { Loader2, Search, Users } from 'lucide-react';
 import { useStudentSearch } from '../hooks/useStudents';
 import { useSchoolStore } from '../store/useSchoolStore';
 import { StudentFileView } from './StudentFileView';
+import { errorMessage } from '../api/errorMessage';
 
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString('fr-FR') : '—';
@@ -24,7 +25,8 @@ export const StudentsExplorer: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [yearId, setYearId] = useState<string | undefined>();
 
-  const { data: results, isFetching } = useStudentSearch(term, currentSchool?.id);
+  const search = useStudentSearch(term, currentSchool?.id);
+  const { data: results, isFetching } = search;
   const trimmed = term.trim();
 
   return (
@@ -47,6 +49,11 @@ export const StudentsExplorer: React.FC = () => {
           {trimmed.length < 2 ? (
             <p className="text-xs text-slate-400 py-6 text-center">
               Saisissez au moins 2 caractères pour lancer la recherche.
+            </p>
+          ) : search.error ? (
+            /* « Aucun élève à ce nom » affirme que la recherche a abouti. */
+            <p className="text-xs text-red-600 py-6 text-center">
+              {errorMessage(search.error, 'Recherche momentanément indisponible.')}
             </p>
           ) : !results || results.length === 0 ? (
             <p className="text-xs text-slate-400 py-6 text-center">

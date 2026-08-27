@@ -4,11 +4,8 @@ import { CalendarRange, Check, Lock, LockOpen, Pencil, X } from 'lucide-react';
 import type { GradingPeriod } from '../types';
 import { useAcademicYears } from '../hooks/useClasses';
 import { useGradingPeriods, useUpdateGradingPeriod } from '../hooks/useGrading';
-
-const errorMessage = (err: any, fallback: string) => {
-  const msg = err?.response?.data?.message || fallback;
-  return Array.isArray(msg) ? msg[0] : msg;
-};
+import { QueryPanel } from './QueryPanel';
+import { errorMessage } from '../api/errorMessage';
 
 export const PeriodsManager: React.FC = () => {
   const { data: years = [] } = useAcademicYears();
@@ -20,7 +17,8 @@ export const PeriodsManager: React.FC = () => {
     }
   }, [years, academicYearId]);
 
-  const { data: periods = [], isLoading } = useGradingPeriods(academicYearId);
+  const periodsQuery = useGradingPeriods(academicYearId);
+  const { data: periods = [], isLoading } = periodsQuery;
 
   return (
     <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8">
@@ -46,7 +44,14 @@ export const PeriodsManager: React.FC = () => {
         )}
       </select>
 
-      {isLoading ? (
+      {periodsQuery.error ? (
+        <QueryPanel
+          query={periodsQuery}
+          fallback="Les périodes de notation sont momentanément indisponibles."
+        >
+          {null}
+        </QueryPanel>
+      ) : isLoading ? (
         <p className="text-sm text-slate-400">Chargement...</p>
       ) : periods.length === 0 ? (
         <div className="text-center py-8 text-slate-400">

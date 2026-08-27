@@ -23,6 +23,7 @@ import {
   UserSearch,
   ArrowRightLeft,
   CalendarClock,
+  HeartHandshake,
 } from "lucide-react";
 import { useCreateUser } from "../hooks/useUsers";
 import {
@@ -38,14 +39,17 @@ import {
 import { DashboardDirection } from "../components/DashboardDirection";
 import { PersonnelList } from "../components/PersonnelList";
 import { PeriodsManager } from "../components/PeriodsManager";
+import { PeriodSystemSetting } from "../components/PeriodSystemSetting";
 import { SubjectsManager } from "../components/SubjectsManager";
 import { TeachingManager } from "../components/TeachingManager";
 import { AuditLogTable } from "../components/AuditLogTable";
+import { ParentsManager } from "../components/ParentsManager";
 import { StudentsExplorer } from "../components/StudentsExplorer";
 import { TransfersManager } from "../components/TransfersManager";
 import { ScheduleManager } from "../components/ScheduleManager";
 import { Role } from "../types";
 import { useAuthStore } from "../store/useAuthStore";
+import { errorMessage } from '../api/errorMessage';
 
 /* ─── Sous-composant : onglet actif ──────────────────────────────── */
 type Tab =
@@ -54,16 +58,12 @@ type Tab =
   | "transferts"
   | "edt"
   | "personnel"
+  | "parents"
   | "annee"
   | "classe"
   | "matieres"
   | "enseignants"
   | "audit";
-
-const errorMessage = (err: any, fallback: string) => {
-  const msg = err?.response?.data?.message || fallback;
-  return Array.isArray(msg) ? msg[0] : msg;
-};
 
 const formatFcfa = (value: number) =>
   `${Number(value).toLocaleString("fr-FR")} FCFA`;
@@ -177,6 +177,13 @@ export const DirectionPage: React.FC = () => {
           color="bg-teal-600"
         />
         <TabButton
+          active={activeTab === "parents"}
+          onClick={() => setActiveTab("parents")}
+          icon={<HeartHandshake className="w-4 h-4" />}
+          label="Parents"
+          color="bg-rose-600"
+        />
+        <TabButton
           active={activeTab === "audit"}
           onClick={() => setActiveTab("audit")}
           icon={<ScrollText className="w-4 h-4" />}
@@ -189,6 +196,7 @@ export const DirectionPage: React.FC = () => {
       {activeTab === "dashboard" && <DashboardDirection />}
       {activeTab === "eleves" && <StudentsExplorer />}
       {activeTab === "transferts" && <TransfersManager />}
+      {activeTab === "parents" && <ParentsManager />}
       {activeTab === "personnel" && (
         <div className="space-y-6">
           <PersonnelTab />
@@ -198,6 +206,7 @@ export const DirectionPage: React.FC = () => {
       {activeTab === "annee" && (
         <div className="space-y-6">
           <AnneeScolaireTab />
+          <PeriodSystemSetting />
           <PeriodsManager />
         </div>
       )}

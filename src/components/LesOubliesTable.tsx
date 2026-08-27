@@ -1,16 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { RefreshCw, Ghost, AlertTriangle, Sparkles } from 'lucide-react';
 import { useSchoolStore } from '../store/useSchoolStore';
+import { useAcademicYears } from '../hooks/useClasses';
 import { useExpiredEnrollments, useRenewEnrollment } from '../hooks/useEnrollments';
+import { QueryPanel } from './QueryPanel';
 
 export const LesOubliesTable: React.FC = () => {
   const { currentSchool } = useSchoolStore();
+  const { data: years = [] } = useAcademicYears();
+  /**
+   * Année consultée. Vide = l'année en cours, ce que le serveur applique par
+   * défaut : l'écran s'ouvre sur les dossiers rattrapables, sans mêler ceux
+   * des rentrées passées.
+   *
+   * Le sélecteur reste là pour les consulter : un dossier expiré d'une année
+   * antérieure garde sa valeur de preuve, et le secrétariat doit pouvoir le
+   * retrouver.
+   */
+  const [academicYearId, setAcademicYearId] = useState('');
+  const expired = useExpiredEnrollments(currentSchool?.id, academicYearId || undefined);
   const {
     data: expiredEnrollments = [],
     isLoading,
     refetch,
-  } = useExpiredEnrollments(currentSchool?.id);
+  } = expired;
 
   const renewMutation = useRenewEnrollment();
 
@@ -61,6 +75,23 @@ export const LesOubliesTable: React.FC = () => {
           </div>
         </div>
 
+        <div className="flex items-center gap-2">
+          {years.length > 1 && (
+            <select
+              value={academicYearId}
+              onChange={(e) => setAcademicYearId(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+            >
+              <option value="">Année en cours</option>
+              {years.map((y) => (
+                <option key={y.id} value={y.id}>
+                  {y.label}
+                  {!y.isActive ? ' (clôturée)' : ''}
+                </option>
+              ))}
+            </select>
+          )}
+
         <button
           onClick={() => refetch()}
           disabled={isLoading}
@@ -69,9 +100,23 @@ export const LesOubliesTable: React.FC = () => {
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           <span>Actualiser</span>
         </button>
+        </div>
       </div>
 
-      {expiredEnrollments.length === 0 ? (
+      {/*
+        L'échec passe avant le message d'absence : « Aucun Dossier Expiré ! »
+        est une bonne nouvelle, et l'annoncer alors que la requête a échoué
+        rassure à tort un secrétariat qui a précisément ouvert cet écran pour
+        rattraper des dossiers.
+      */}
+      {expired.error ? (
+        <QueryPanel
+          query={expired}
+          fallback="La liste des dossiers expirés est momentanément indisponible."
+        >
+          {null}
+        </QueryPanel>
+      ) : expiredEnrollments.length === 0 ? (
         <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center flex flex-col items-center justify-center">
           <AlertTriangle className="w-10 h-10 text-emerald-500 mb-2" />
           <h3 className="text-base font-bold text-slate-800">Aucun Dossier Expiré !</h3>

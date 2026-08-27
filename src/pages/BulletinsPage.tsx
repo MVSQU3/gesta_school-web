@@ -8,6 +8,7 @@ import { useClassBulletins } from '../hooks/useBulletins';
 import { BulletinDocument } from '../components/BulletinDocument';
 import { useSchoolStore } from '../store/useSchoolStore';
 import type { StudentBulletin } from '../types';
+import { QueryPanel } from '../components/QueryPanel';
 
 export const BulletinsPage: React.FC = () => {
   const { currentSchool } = useSchoolStore();
@@ -40,7 +41,8 @@ export const BulletinsPage: React.FC = () => {
     }
   }, [periods, periodId]);
 
-  const { data, isLoading } = useClassBulletins(classRoomId, periodId);
+  const bulletinsQuery = useClassBulletins(classRoomId, periodId);
+  const { data, isLoading } = bulletinsQuery;
   const bulletins = data?.bulletins ?? [];
   const period = data?.period;
 
@@ -227,7 +229,14 @@ export const BulletinsPage: React.FC = () => {
           )}
         </div>
 
-        {isLoading ? (
+        {bulletinsQuery.error ? (
+          <QueryPanel
+            query={bulletinsQuery}
+            fallback="Les bulletins de cette classe sont momentanément indisponibles."
+          >
+            {null}
+          </QueryPanel>
+        ) : isLoading ? (
           <p className="text-sm text-slate-400 py-8 text-center">Calcul des bulletins...</p>
         ) : bulletins.length === 0 ? (
           <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center">

@@ -9,13 +9,7 @@ import {
 import { useUpdateStudent } from '../hooks/useStudents';
 import { useClassRooms } from '../hooks/useClasses';
 import { useSchoolStore } from '../store/useSchoolStore';
-
-const errorMessage = (err: unknown, fallback: string): string => {
-  const msg = (err as { response?: { data?: { message?: string | string[] } } })
-    ?.response?.data?.message;
-  if (Array.isArray(msg)) return msg[0];
-  return msg ?? fallback;
-};
+import { errorMessage } from '../api/errorMessage';
 
 /** ISO `AAAA-MM-JJ` (ce que renvoie l'API) → `JJ-MM-AAAA` (ce qu'elle attend). */
 const isoToLocal = (value?: string): string => {
