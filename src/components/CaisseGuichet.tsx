@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import {
+  AlertTriangle,
   Search,
   CreditCard,
   AlertCircle,
@@ -299,6 +300,38 @@ export const CaisseGuichet: React.FC = () => {
               </span>
             </div>
           </div>
+
+          {/*
+            Ardoise des années précédentes.
+            Signalée, jamais ajoutée au total dû : reporter d'office la dette
+            de l'an dernier mélangerait deux exercices comptables. Le guichet
+            voit et décide.
+          */}
+          {(enrollment?.previousDebts?.length ?? 0) > 0 && (
+            <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4">
+              <p className="flex items-center gap-2 text-sm font-bold text-amber-900">
+                <AlertTriangle className="h-4 w-4" />
+                Impayé sur une année précédente
+              </p>
+              <ul className="mt-2 space-y-1">
+                {enrollment?.previousDebts?.map((debt) => (
+                  <li
+                    key={debt.reference}
+                    className="flex items-center justify-between text-sm text-amber-900"
+                  >
+                    <span className="font-mono text-xs">
+                      {debt.reference} — {debt.academicYearLabel}
+                    </span>
+                    <span className="font-bold">{formatFcfa(debt.balance)}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-amber-700">
+                Ce montant n'est pas inclus dans le total ci-dessous : il
+                concerne un autre dossier.
+              </p>
+            </div>
+          )}
 
           {/* Situation financière du dossier */}
           {balanceInfo && (

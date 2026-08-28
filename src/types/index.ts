@@ -78,6 +78,16 @@ export interface Enrollment {
   createdByUserId?: string | null;
   /** Renseigné par la recherche par référence (guichet de caisse). */
   balanceInfo?: EnrollmentBalance;
+  /**
+   * Impayés du même élève sur les années précédentes. Signalés au guichet,
+   * jamais reportés sur le dossier en cours : c'est une négociation avec la
+   * famille, pas un calcul automatique.
+   */
+  previousDebts?: Array<{
+    reference: string;
+    academicYearLabel: string;
+    balance: number;
+  }>;
   school?: School;
   student?: Student;
   classRoom?: ClassRoom;
@@ -502,6 +512,9 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   SCHOOL_CREATED: 'Établissement créé',
   SCHOOL_UPDATED: 'Établissement modifié',
   SCHOOL_DELETED: 'Établissement supprimé',
+  GRADES_SAVED: 'Notes saisies',
+  EVALUATION_DELETED: 'Évaluation supprimée',
+  ABSENCES_RECORDED: 'Appel enregistré',
   PAYMENT_RECEIVED: 'Versement encaissé',
   PAYMENT_CANCELLED: 'Versement annulé',
   PARENT_CREATED: 'Compte parent créé',

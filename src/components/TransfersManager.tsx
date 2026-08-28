@@ -17,7 +17,6 @@ import {
   TRANSFER_STATUS_LABELS,
   TransferStatus,
   type ForeignStudentMatch,
-  type SharedFile,
   type TransferRequest,
 } from '../types';
 import {

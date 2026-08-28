@@ -7,6 +7,7 @@ import type {
   Parent,
   ParentChild,
   ParentChildFinance,
+  PaginatedResult,
   ParentSubjectGrades,
   ParentYear,
   StudentBulletin,
@@ -156,15 +157,22 @@ export interface CreateParentInput {
 }
 
 /** Liste des comptes parents de l'établissement. */
-export function useParents(search?: string) {
+/**
+ * Comptes parents, paginés côté serveur.
+ *
+ * Une école compte autant de comptes que de familles : la liste entière
+ * repartait à chaque frappe dans la recherche.
+ */
+export function useParents(search?: string, page = 1) {
   const user = useAuthStore((s) => s.user);
   return useQuery({
-    queryKey: ['parents', user?.schoolId, search ?? ''],
+    queryKey: ['parents', user?.schoolId, search ?? '', page],
     queryFn: async () => {
-      const query = search?.trim()
-        ? `?search=${encodeURIComponent(search.trim())}`
-        : '';
-      const { data } = await apiClient.get<Parent[]>(`/parents${query}`);
+      const params = new URLSearchParams({ page: String(page), limit: '25' });
+      if (search?.trim()) params.append('search', search.trim());
+      const { data } = await apiClient.get<PaginatedResult<Parent>>(
+        `/parents?${params.toString()}`,
+      );
       return data;
     },
   });

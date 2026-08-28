@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { Check, Copy, KeyRound, Loader2, ShieldAlert, X } from 'lucide-react';
 import { apiClient } from '../api/client';
 import type { User } from '../types';
+import { MIN_PASSWORD_LENGTH } from '../api/passwordPolicy';
 
 interface Props {
   user: User;
@@ -27,7 +28,7 @@ export const ResetPasswordModal: React.FC<Props> = ({
 
   const submit = async () => {
     if (mode === 'manual' && manualPassword.trim().length < 6) {
-      toast.error('Le mot de passe doit comporter au moins 6 caractères.');
+      toast.error(`Le mot de passe doit comporter au moins ${MIN_PASSWORD_LENGTH} caractères.`);
       return;
     }
 
@@ -165,7 +166,7 @@ export const ResetPasswordModal: React.FC<Props> = ({
                 </label>
                 <input
                   type="text"
-                  minLength={6}
+                  minLength={MIN_PASSWORD_LENGTH}
                   value={manualPassword}
                   onChange={(e) => setManualPassword(e.target.value)}
                   placeholder="6 caractères minimum"

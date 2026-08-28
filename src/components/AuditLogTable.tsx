@@ -32,6 +32,14 @@ const toneFor = (action: string): string => {
   // La caisse en ambre : c'est la couleur des écrans financiers, et ce sont
   // les lignes qu'on cherche en priorité dans un journal.
   if (action.startsWith('PAYMENT_')) return 'bg-amber-100 text-amber-700';
+  // Notation et assiduité : les actes qu'une famille conteste.
+  if (
+    action.startsWith('GRADES_') ||
+    action.startsWith('EVALUATION_') ||
+    action.startsWith('ABSENCES_')
+  ) {
+    return 'bg-cyan-100 text-cyan-700';
+  }
   if (action.startsWith('PARENT_')) return 'bg-rose-100 text-rose-700';
   return 'bg-slate-100 text-slate-600';
 };

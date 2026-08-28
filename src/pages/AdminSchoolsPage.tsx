@@ -7,6 +7,7 @@ import { SchoolStaffPanel } from '../components/SchoolStaffPanel';
 import { Role, type School } from '../types';
 import { QueryPanel } from '../components/QueryPanel';
 import { PERIOD_SYSTEM_LABELS, PeriodSystem } from '../types';
+import { MIN_PASSWORD_LENGTH, PASSWORD_HINT } from '../api/passwordPolicy';
 
 export const AdminSchoolsPage: React.FC = () => {
   const schoolsQuery = useSchools();
@@ -572,8 +573,8 @@ export const AdminSchoolsPage: React.FC = () => {
                 <input
                   type="password"
                   required
-                  minLength={6}
-                  placeholder="Minimum 6 caractères"
+                  minLength={MIN_PASSWORD_LENGTH}
+                  placeholder={PASSWORD_HINT}
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 text-sm"
                   value={userPassword}
                   onChange={(e) => setUserPassword(e.target.value)}

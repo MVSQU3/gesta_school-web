@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { KeyRound, Loader2, X } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/useAuthStore';
+import { MIN_PASSWORD_LENGTH, PASSWORD_HINT } from '../api/passwordPolicy';
 
 interface Props {
   onClose: () => void;
@@ -92,13 +93,13 @@ export const ChangePasswordModal: React.FC<Props> = ({ onClose }) => {
             <input
               type="password"
               required
-              minLength={6}
+              minLength={MIN_PASSWORD_LENGTH}
               autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
             />
-            <p className="mt-1 text-xs text-slate-400">Minimum 6 caractères.</p>
+            <p className="mt-1 text-xs text-slate-400">{PASSWORD_HINT}</p>
           </div>
 
           <div>

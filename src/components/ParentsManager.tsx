@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import {
+  ChevronLeft,
+  ChevronRight,
   KeyRound,
   Link2,
   Plus,
@@ -38,8 +40,11 @@ export const ParentsManager: React.FC = () => {
     password: string;
   } | null>(null);
 
-  const parentsQuery = useParents(search);
-  const { data: parents = [], isLoading } = parentsQuery;
+  const [page, setPage] = useState(1);
+  const parentsQuery = useParents(search, page);
+  const { data, isLoading } = parentsQuery;
+  const parents = data?.items ?? [];
+  const totalPages = data?.totalPages ?? 1;
   const hasRole = useAuthStore((s) => s.hasRole);
   const isDirector = hasRole(Role.DIRECTOR);
 
@@ -99,7 +104,12 @@ export const ParentsManager: React.FC = () => {
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            // Rester en page 3 d'une recherche precedente afficherait un vide
+            // trompeur : la nouvelle recherche a rarement autant de pages.
+            setPage(1);
+          }}
           placeholder="Rechercher un parent (nom, email, téléphone)…"
           className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
@@ -136,6 +146,30 @@ export const ParentsManager: React.FC = () => {
               }
             />
           ))}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+              <span className="text-xs text-slate-500">
+                Page {page} sur {totalPages} — {data?.total ?? 0} compte(s)
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                  disabled={page <= 1}
+                  className="rounded-lg bg-slate-100 p-2 hover:bg-slate-200 disabled:opacity-40"
+                >
+                  <ChevronLeft className="h-4 w-4 text-slate-600" />
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                  disabled={page >= totalPages}
+                  className="rounded-lg bg-slate-100 p-2 hover:bg-slate-200 disabled:opacity-40"
+                >
+                  <ChevronRight className="h-4 w-4 text-slate-600" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

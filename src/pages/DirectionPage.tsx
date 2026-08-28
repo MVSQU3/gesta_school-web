@@ -50,6 +50,7 @@ import { ScheduleManager } from "../components/ScheduleManager";
 import { Role } from "../types";
 import { useAuthStore } from "../store/useAuthStore";
 import { errorMessage } from '../api/errorMessage';
+import { MIN_PASSWORD_LENGTH, PASSWORD_HINT } from '../api/passwordPolicy';
 
 /* ─── Sous-composant : onglet actif ──────────────────────────────── */
 type Tab =
@@ -282,14 +283,14 @@ const PersonnelTab: React.FC = () => {
               <input
                 type="password"
                 required
-                minLength={6}
+                minLength={MIN_PASSWORD_LENGTH}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="block w-full pl-10 pr-3 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                 placeholder="••••••••"
               />
             </div>
-            <p className="mt-1 text-xs text-slate-400">Minimum 6 caractères.</p>
+            <p className="mt-1 text-xs text-slate-400">{PASSWORD_HINT}</p>
           </div>
 
           <div>
