@@ -4,6 +4,7 @@ import type {
   AbsenceAtRiskRow,
   AbsenceOverviewRow,
   AbsenceStatus,
+  MissingRollCall,
   RollCall,
   TeachingSession,
 } from '../types';
@@ -157,6 +158,25 @@ export function useDeleteAbsence() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roll-call'] });
       queryClient.invalidateQueries({ queryKey: ['absence-overview'] });
+    },
+  });
+}
+
+/**
+ * Séances qui auraient dû être appelées et ne l'ont pas été.
+ *
+ * La question que se pose une direction sur l'assiduité n'est pas seulement
+ * « qui manque » mais « qui ne relève pas ».
+ */
+export function useMissingRollCalls(from: string, to: string) {
+  return useQuery({
+    queryKey: ['absence-overview', 'missing', from, to],
+    enabled: !!from && !!to,
+    queryFn: async () => {
+      const { data } = await apiClient.get<MissingRollCall[]>(
+        `/absences/missing?from=${from}&to=${to}`,
+      );
+      return data;
     },
   });
 }

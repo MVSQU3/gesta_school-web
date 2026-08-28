@@ -162,6 +162,9 @@ export const AbsencesPage: React.FC = () => {
           >
             {sessions.map((s) => (
               <option key={s.scheduleEntryId} value={s.scheduleEntryId}>
+                {/* La coche distingue une séance déjà appelée d'une séance
+                    sans absent : sans elle, les deux se ressemblent. */}
+                {s.taken ? '✓ ' : '• '}
                 {s.startTime.slice(0, 5)}–{s.endTime.slice(0, 5)} · {s.subjectName}{' '}
                 · {s.classRoomName}
               </option>
@@ -199,6 +202,11 @@ export const AbsencesPage: React.FC = () => {
                 <span className="text-slate-500">
                   {rollCall.data?.session.timeSlotLabel}
                 </span>
+                {sessions.find((s) => s.scheduleEntryId === selectedId)?.taken && (
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
+                    Appel déjà fait
+                  </span>
+                )}
                 <span className="flex items-center gap-1.5 text-red-700">
                   <UserX className="h-4 w-4" /> {absentCount} absent(s)
                 </span>

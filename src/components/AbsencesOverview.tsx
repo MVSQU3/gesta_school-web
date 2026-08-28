@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { AlertTriangle, Clock, UserX } from 'lucide-react';
+import { AlertTriangle, CalendarOff, Clock, UserX } from 'lucide-react';
 import {
   useAbsenceOverview,
   useAbsencesAtRisk,
+  useMissingRollCalls,
 } from '../hooks/useAbsences';
 import { useAcademicYears, useClassRooms } from '../hooks/useClasses';
 import { useGradingPeriods, useSubjects } from '../hooks/useGrading';
@@ -29,6 +30,24 @@ export const AbsencesOverview: React.FC = () => {
   const [classRoomId, setClassRoomId] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [threshold, setThreshold] = useState(5);
+
+  /**
+   * Fenêtre des appels manquants : les deux dernières semaines.
+   *
+   * Au-delà, le rattrapage n'a plus de sens — les bulletins approchent et
+   * personne ne se souvient qui était là. Le serveur refuse d'ailleurs les
+   * intervalles trop larges.
+   */
+  const missingRange = useMemo(() => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 14);
+    const iso = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return { from: iso(start), to: iso(end) };
+  }, []);
+
+  const missing = useMissingRollCalls(missingRange.from, missingRange.to);
 
   const filters = useMemo(
     () => ({
@@ -139,6 +158,61 @@ export const AbsencesOverview: React.FC = () => {
               </li>
             ))}
           </ul>
+        </QueryPanel>
+      </div>
+
+      {/*
+        Appels non faits. Distincts des absences : ici ce n'est pas l'élève
+        qui manque, c'est le relevé. Sans la trace des appels effectués, la
+        question serait indécidable — une séance sans absent ressemble à une
+        séance jamais appelée.
+      */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <p className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-800">
+          <CalendarOff className="h-4 w-4 text-slate-400" />
+          Appels non faits — 14 derniers jours
+        </p>
+
+        <QueryPanel
+          query={missing}
+          isEmpty={(missing.data?.length ?? 0) === 0}
+          loading="Recherche des appels manquants…"
+          empty="Tous les appels ont été faits sur la période."
+          fallback="Ce relevé est momentanément indisponible."
+        >
+          <div className="max-h-64 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="px-4 py-2">Date</th>
+                  <th className="px-4 py-2">Cours</th>
+                  <th className="px-4 py-2">Classe</th>
+                  <th className="px-4 py-2">Enseignant</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {missing.data?.map((m) => (
+                  <tr key={`${m.scheduleEntryId}|${m.date}`}>
+                    <td className="px-4 py-2 font-mono text-xs text-slate-600">
+                      {new Date(m.date).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td className="px-4 py-2 text-slate-800">
+                      {m.subjectName}
+                      <span className="ml-2 text-xs text-slate-400">
+                        {m.timeSlotLabel}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-slate-500">
+                      {m.classRoomName}
+                    </td>
+                    <td className="px-4 py-2 text-xs text-slate-500">
+                      {m.teacherEmail}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </QueryPanel>
       </div>
 

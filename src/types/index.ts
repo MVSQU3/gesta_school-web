@@ -282,6 +282,8 @@ export const ABSENCE_STATUS_LABELS: Record<AbsenceStatus, string> = {
 /** Séance de l'emploi du temps qu'un enseignant peut appeler. */
 export interface TeachingSession {
   scheduleEntryId: string;
+  /** L'appel de cette séance a déjà été fait pour la date consultée. */
+  taken: boolean;
   classRoomId: string;
   classRoomName: string;
   subjectId: string;
@@ -333,6 +335,16 @@ export interface AbsenceOverviewRow {
   unjustified: number;
   justified: number;
   late: number;
+}
+
+/** Séance qui aurait dû être appelée et ne l'a pas été. */
+export interface MissingRollCall {
+  scheduleEntryId: string;
+  date: string;
+  classRoomName: string;
+  subjectName: string;
+  teacherEmail: string;
+  timeSlotLabel: string;
 }
 
 /** Élève dépassant le seuil d'absences non justifiées. */
