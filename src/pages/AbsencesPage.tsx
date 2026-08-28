@@ -1,471 +1,328 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import { CalendarCheck, Clock, Save, UserX } from 'lucide-react';
 import {
-  CalendarCheck,
-  Loader2,
-  Save,
-  Sun,
-  Sunset,
-  UserX,
-} from 'lucide-react';
-import { HalfDay, Role, type RollCallRow } from '../types';
-import { useAcademicYears, useClassRooms } from '../hooks/useClasses';
-import { useMyAssignments } from '../hooks/useGrading';
-import { useRecordAbsences, useRollCall } from '../hooks/useAbsences';
-import { useAuthStore } from '../store/useAuthStore';
-import { errorMessage } from '../api/errorMessage';
+  useMySessions,
+  useRecordAbsences,
+  useRollCall,
+  type AbsenceEntryInput,
+} from '../hooks/useAbsences';
 import { QueryPanel } from '../components/QueryPanel';
+import { errorMessage } from '../api/errorMessage';
+import { AbsenceStatus, ABSENCE_STATUS_LABELS } from '../types';
 
+/** Date du jour au format attendu par l'API. */
 const todayIso = () => {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`;
 };
 
-/** État local d'une demi-journée pendant la saisie. */
-interface HalfDayState {
-  absent: boolean;
-  isJustified: boolean;
-  reason: string;
-}
-
+/** Ce que l'écran retient pour un élève, avant envoi. */
 interface RowState {
   enrollmentId: string;
   firstName: string;
   lastName: string;
-  morning: HalfDayState;
-  afternoon: HalfDayState;
+  /** `null` = présent. C'est l'état par défaut, et le plus fréquent. */
+  status: AbsenceStatus | null;
+  isJustified: boolean;
+  reason: string;
 }
 
-const emptyHalfDay = (): HalfDayState => ({
-  absent: false,
-  isJustified: false,
-  reason: '',
-});
-
+/**
+ * Appel d'une séance de cours.
+ *
+ * L'assiduité se relève par cours et non plus par demi-journée : un
+ * enseignant choisit une date, on lui propose ses séances de ce jour-là, et
+ * il n'appelle que celles-là. Un cours du lundi ne s'appelle que pour un
+ * lundi — la saisie peut être différée, la séance visée reste la bonne.
+ */
 export const AbsencesPage: React.FC = () => {
-  const user = useAuthStore((s) => s.user);
-  const isTeacherOnly =
-    !!user &&
-    user.roles.includes(Role.TEACHER) &&
-    !user.roles.some((r) =>
-      [Role.SUPER_ADMIN, Role.DIRECTOR, Role.SECRETARY].includes(r),
-    );
-
-  /**
-   * L'appel se constate en classe : seuls l'enseignant et la direction le
-   * saisissent. Le secrétariat consulte la feuille et justifie les absences a
-   * posteriori, mais ne les déclare pas — le backend refuse sa saisie, l'écran
-   * ne doit donc pas lui proposer un bouton qui échouera.
-   */
-  const canRecord =
-    !!user &&
-    user.roles.some((r) =>
-      [Role.SUPER_ADMIN, Role.DIRECTOR, Role.TEACHER].includes(r),
-    );
-
-  const { data: years = [] } = useAcademicYears();
-  const activeYear = useMemo(
-    () => years.find((y) => y.isActive) ?? years[0],
-    [years],
-  );
-
-  // Un enseignant ne fait l'appel que dans ses classes : la liste vient de ses
-  // affectations, pas du catalogue complet des classes de l'établissement.
-  const { data: allClassRooms = [] } = useClassRooms();
-  const { data: assignments = [] } = useMyAssignments(
-    isTeacherOnly ? activeYear?.id : undefined,
-  );
-
-  const classRooms = useMemo(() => {
-    if (!isTeacherOnly) return allClassRooms.map((c) => ({ id: c.id, name: c.name }));
-    const seen = new Map<string, { id: string; name: string }>();
-    for (const a of assignments) {
-      if (a.classRoom && !seen.has(a.classRoom.id)) {
-        seen.set(a.classRoom.id, { id: a.classRoom.id, name: a.classRoom.name });
-      }
-    }
-    return Array.from(seen.values());
-  }, [isTeacherOnly, allClassRooms, assignments]);
-
-  const [classRoomId, setClassRoomId] = useState('');
   const [date, setDate] = useState(todayIso());
+  const [sessionId, setSessionId] = useState('');
 
-  useEffect(() => {
-    if (classRooms.length > 0 && !classRoomId) setClassRoomId(classRooms[0].id);
-  }, [classRooms, classRoomId]);
+  const sessionsQuery = useMySessions(date);
+  const sessions = useMemo(() => sessionsQuery.data ?? [], [sessionsQuery.data]);
 
-  const rollCall = useRollCall(
-    classRoomId,
-    activeYear?.id,
-    date,
-  );
-  const { data, isLoading, isFetching } = rollCall;
+  // Sélection dérivée : à défaut de choix, la première séance du jour.
+  const selectedId =
+    sessions.find((s) => s.scheduleEntryId === sessionId)?.scheduleEntryId ??
+    sessions[0]?.scheduleEntryId ??
+    '';
+
+  const rollCall = useRollCall(selectedId || undefined, date);
   const recordMutation = useRecordAbsences();
 
-  const [rows, setRows] = useState<RowState[]>([]);
+  /**
+   * L'état de la feuille est dérivé de la réponse serveur, sans effet ni
+   * copie : un `useState` synchronisé par `useEffect` afficherait un instant
+   * la feuille de la séance précédente.
+   */
+  const [edits, setEdits] = useState<Record<string, Partial<RowState>>>({});
+  const [editedFor, setEditedFor] = useState('');
 
-  useEffect(() => {
-    if (!data) return;
-    setRows(
-      data.students.map((s: RollCallRow) => ({
+  const key = `${selectedId}|${date}`;
+  const rows: RowState[] = useMemo(() => {
+    const students = rollCall.data?.students ?? [];
+    return students.map((s) => {
+      const base: RowState = {
         enrollmentId: s.enrollmentId,
         firstName: s.firstName,
         lastName: s.lastName,
-        morning: s.morning
-          ? {
-              absent: true,
-              isJustified: s.morning.isJustified,
-              reason: s.morning.reason ?? '',
-            }
-          : emptyHalfDay(),
-        afternoon: s.afternoon
-          ? {
-              absent: true,
-              isJustified: s.afternoon.isJustified,
-              reason: s.afternoon.reason ?? '',
-            }
-          : emptyHalfDay(),
-      })),
-    );
-  }, [data]);
-
-  const patch = (
-    enrollmentId: string,
-    half: 'morning' | 'afternoon',
-    changes: Partial<HalfDayState>,
-  ) =>
-    setRows((prev) =>
-      prev.map((r) =>
-        r.enrollmentId === enrollmentId
-          ? { ...r, [half]: { ...r[half], ...changes } }
-          : r,
-      ),
-    );
-
-  const summary = useMemo(() => {
-    const morning = rows.filter((r) => r.morning.absent).length;
-    const afternoon = rows.filter((r) => r.afternoon.absent).length;
-    const justified = rows.reduce(
-      (n, r) =>
-        n +
-        (r.morning.absent && r.morning.isJustified ? 1 : 0) +
-        (r.afternoon.absent && r.afternoon.isJustified ? 1 : 0),
-      0,
-    );
-    return { morning, afternoon, total: morning + afternoon, justified };
-  }, [rows]);
-
-  const handleSave = () => {
-    if (!classRoomId || !activeYear) return;
-
-    const absences = rows.flatMap((r) => {
-      const entries = [];
-      if (r.morning.absent) {
-        entries.push({
-          enrollmentId: r.enrollmentId,
-          halfDay: HalfDay.MORNING,
-          isJustified: r.morning.isJustified,
-          reason: r.morning.reason.trim() || undefined,
-        });
-      }
-      if (r.afternoon.absent) {
-        entries.push({
-          enrollmentId: r.enrollmentId,
-          halfDay: HalfDay.AFTERNOON,
-          isJustified: r.afternoon.isJustified,
-          reason: r.afternoon.reason.trim() || undefined,
-        });
-      }
-      return entries;
+        status: s.mark?.status ?? null,
+        isJustified: s.mark?.isJustified ?? false,
+        reason: s.mark?.reason ?? '',
+      };
+      return editedFor === key
+        ? { ...base, ...(edits[s.enrollmentId] ?? {}) }
+        : base;
     });
+  }, [rollCall.data, edits, editedFor, key]);
+
+  const patch = (enrollmentId: string, changes: Partial<RowState>) => {
+    setEdits((prev) =>
+      editedFor === key
+        ? { ...prev, [enrollmentId]: { ...(prev[enrollmentId] ?? {}), ...changes } }
+        : { [enrollmentId]: changes },
+    );
+    setEditedFor(key);
+  };
+
+  const submit = () => {
+    const entries: AbsenceEntryInput[] = rows
+      .filter((r) => r.status !== null)
+      .map((r) => ({
+        enrollmentId: r.enrollmentId,
+        status: r.status as AbsenceStatus,
+        isJustified: r.isJustified,
+        reason: r.reason.trim() || undefined,
+      }));
 
     recordMutation.mutate(
-      { classRoomId, academicYearId: activeYear.id, date, absences },
+      { scheduleEntryId: selectedId, date, entries },
       {
-        onSuccess: (res) => {
+        onSuccess: (result) => {
           toast.success(
-            res.cleared > 0
-              ? `Appel enregistré : ${res.recorded} absence(s), ${res.cleared} élève(s) repassé(s) présent(s).`
-              : `Appel enregistré : ${res.recorded} absence(s).`,
+            `Appel enregistré : ${result.recorded} écart(s)` +
+              (result.cleared > 0 ? `, ${result.cleared} levé(s)` : ''),
           );
+          setEdits({});
+          setEditedFor('');
         },
         onError: (err) =>
-          toast.error(errorMessage(err, "Erreur lors de l'enregistrement")),
+          toast.error(errorMessage(err, 'Enregistrement impossible.'), {
+            duration: 8000,
+          }),
       },
     );
   };
 
-  if (!activeYear) {
-    return (
-      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-10 text-center max-w-lg mx-auto">
-        <CalendarCheck className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-        <h2 className="text-base font-bold text-slate-800">
-          Aucune année scolaire active
-        </h2>
-        <p className="text-xs text-slate-500 mt-2">
-          La direction doit ouvrir et activer une année scolaire avant que
-          l'appel puisse être fait.
-        </p>
-      </div>
-    );
-  }
-
-  if (classRooms.length === 0) {
-    return (
-      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-10 text-center max-w-lg mx-auto">
-        <CalendarCheck className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-        <h2 className="text-base font-bold text-slate-800">Aucune classe</h2>
-        <p className="text-xs text-slate-500 mt-2">
-          {isTeacherOnly
-            ? "Aucune classe ne vous est affectée pour cette année scolaire."
-            : "Aucune classe n'a encore été créée dans l'établissement."}
-        </p>
-      </div>
-    );
-  }
+  const absentCount = rows.filter(
+    (r) => r.status === AbsenceStatus.ABSENT,
+  ).length;
+  const lateCount = rows.filter((r) => r.status === AbsenceStatus.LATE).length;
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8 flex items-center space-x-6">
-        <div className="p-4 bg-amber-50 text-amber-600 rounded-2xl">
-          <CalendarCheck className="w-8 h-8" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Appel des absences</h1>
-          <p className="text-slate-500 mt-1">
-            Par demi-journée — année {activeYear.label}.
-          </p>
-        </div>
-      </div>
+      <header>
+        <h1 className="text-2xl font-bold text-slate-900">Appel</h1>
+        <p className="text-sm text-slate-500">
+          L'assiduité se relève cours par cours. Vous n'appelez que vos propres
+          séances, à la date où elles ont lieu.
+        </p>
+      </header>
 
-      {/* Sélection */}
-      <div className="bg-white rounded-2xl shadow-lg border border-slate-100 p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-            Classe
-          </label>
-          <select
-            value={classRoomId}
-            onChange={(e) => setClassRoomId(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm bg-white"
-          >
-            {classRooms.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+        <label>
+          <span className="mb-1 block text-xs font-semibold text-slate-600">
             Date
-          </label>
+          </span>
           <input
             type="date"
             value={date}
             max={todayIso()}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+            onChange={(e) => {
+              setDate(e.target.value);
+              setSessionId('');
+            }}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
           />
-        </div>
+        </label>
+
+        <label className="min-w-[16rem] flex-1">
+          <span className="mb-1 block text-xs font-semibold text-slate-600">
+            Séance
+          </span>
+          <select
+            value={selectedId}
+            onChange={(e) => setSessionId(e.target.value)}
+            disabled={sessions.length === 0}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm disabled:bg-slate-50"
+          >
+            {sessions.map((s) => (
+              <option key={s.scheduleEntryId} value={s.scheduleEntryId}>
+                {s.startTime.slice(0, 5)}–{s.endTime.slice(0, 5)} · {s.subjectName}{' '}
+                · {s.classRoomName}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
-      {/* Feuille d'appel */}
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-6 sm:p-8">
-        <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-          <h2 className="text-lg font-bold text-slate-900">
-            {new Date(date).toLocaleDateString('fr-FR', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
-            })}
-          </h2>
-          <div className="flex items-center gap-4 text-xs">
-            <span className="flex items-center gap-1.5 text-slate-500">
-              <Sun className="w-3.5 h-3.5 text-amber-500" />
-              {summary.morning} matin
-            </span>
-            <span className="flex items-center gap-1.5 text-slate-500">
-              <Sunset className="w-3.5 h-3.5 text-indigo-500" />
-              {summary.afternoon} après-midi
-            </span>
-            <span className="text-slate-400">
-              dont {summary.justified} justifiée{summary.justified > 1 ? 's' : ''}
-            </span>
-          </div>
-        </div>
-
-        {rollCall.error ? (
-          <QueryPanel
-            query={rollCall}
-            fallback="L'appel est momentanément indisponible."
-          >
-            {null}
-          </QueryPanel>
-        ) : isLoading ? (
-          <p className="text-sm text-slate-400 py-8 text-center">
-            Chargement de la classe...
-          </p>
-        ) : rows.length === 0 ? (
-          <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center">
-            <UserX className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-            <h3 className="text-base font-bold text-slate-800">
-              Aucun élève dans cette classe
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Aucune inscription active pour cette classe sur l'année {activeYear.label}.
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* En-tête des colonnes */}
-            <div className="hidden sm:flex items-center gap-3 px-3 pb-2 text-[11px] uppercase tracking-wide text-slate-400 font-semibold">
-              <span className="w-6" />
-              <span className="flex-1">Élève</span>
-              <span className="w-24 text-center">Matin</span>
-              <span className="w-24 text-center">Après-midi</span>
-              <span className="w-40">Motif</span>
-            </div>
-
-            <div className="space-y-2">
-              {rows.map((row, index) => {
-                const anyAbsent = row.morning.absent || row.afternoon.absent;
-                return (
-                  <div
-                    key={row.enrollmentId}
-                    className={`flex flex-wrap sm:flex-nowrap items-center gap-3 p-2.5 rounded-xl border ${
-                      anyAbsent
-                        ? 'bg-amber-50/60 border-amber-200'
-                        : 'bg-white border-slate-200'
-                    }`}
-                  >
-                    <span className="w-6 text-xs text-slate-400 font-mono text-right">
-                      {index + 1}
-                    </span>
-                    <span className="flex-1 text-sm font-semibold text-slate-800 min-w-0 truncate">
-                      {row.lastName} {row.firstName}
-                    </span>
-
-                    <HalfDayToggle
-                      label="Matin"
-                      icon={<Sun className="w-4 h-4" />}
-                      state={row.morning}
-                      onToggle={() =>
-                        patch(row.enrollmentId, 'morning', {
-                          absent: !row.morning.absent,
-                        })
-                      }
-                      onJustify={() =>
-                        patch(row.enrollmentId, 'morning', {
-                          isJustified: !row.morning.isJustified,
-                        })
-                      }
-                    />
-
-                    <HalfDayToggle
-                      label="Après-midi"
-                      icon={<Sunset className="w-4 h-4" />}
-                      state={row.afternoon}
-                      onToggle={() =>
-                        patch(row.enrollmentId, 'afternoon', {
-                          absent: !row.afternoon.absent,
-                        })
-                      }
-                      onJustify={() =>
-                        patch(row.enrollmentId, 'afternoon', {
-                          isJustified: !row.afternoon.isJustified,
-                        })
-                      }
-                    />
-
-                    {/* Un seul motif par élève et par jour : il est recopié sur
-                        les deux demi-journées déclarées. */}
-                    <input
-                      type="text"
-                      maxLength={255}
-                      disabled={!anyAbsent}
-                      value={row.morning.reason || row.afternoon.reason}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        patch(row.enrollmentId, 'morning', { reason: value });
-                        patch(row.enrollmentId, 'afternoon', { reason: value });
-                      }}
-                      placeholder={anyAbsent ? 'Motif (optionnel)' : ''}
-                      className="w-full sm:w-40 px-2.5 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:bg-slate-50 disabled:border-slate-100"
-                    />
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-6 flex items-center gap-3">
-              <div className="flex-1 text-xs text-slate-400">
-                {canRecord
-                  ? "Un élève décoché est repassé présent : son absence sera effacée à l'enregistrement."
-                  : "Consultation seule : l'appel est saisi par l'enseignant de la classe ou par la direction."}
+      {/*
+        Aucune séance ce jour-là n'est un état normal — un professeur n'a pas
+        cours tous les jours. Le message doit le dire, pas laisser un écran vide.
+      */}
+      <QueryPanel
+        query={sessionsQuery}
+        isEmpty={sessions.length === 0}
+        loading="Chargement de vos séances…"
+        empty="Vous n'avez aucun cours ce jour-là."
+        fallback="Vos séances sont momentanément indisponibles."
+      >
+        <QueryPanel
+          query={rollCall}
+          isEmpty={rows.length === 0}
+          loading="Chargement de la feuille d'appel…"
+          empty="Aucun élève inscrit dans cette classe."
+          fallback="La feuille d'appel est momentanément indisponible."
+        >
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3">
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <span className="flex items-center gap-1.5 font-semibold text-slate-700">
+                  <CalendarCheck className="h-4 w-4 text-slate-400" />
+                  {rollCall.data?.session.subjectName} —{' '}
+                  {rollCall.data?.session.classRoomName}
+                </span>
+                <span className="text-slate-500">
+                  {rollCall.data?.session.timeSlotLabel}
+                </span>
+                <span className="flex items-center gap-1.5 text-red-700">
+                  <UserX className="h-4 w-4" /> {absentCount} absent(s)
+                </span>
+                <span className="flex items-center gap-1.5 text-amber-700">
+                  <Clock className="h-4 w-4" /> {lateCount} retard(s)
+                </span>
               </div>
+
               <button
-                onClick={handleSave}
-                hidden={!canRecord}
-                disabled={!canRecord || recordMutation.isPending || isFetching}
-                className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-2xl shadow-lg shadow-amber-600/30 text-sm flex items-center gap-2 disabled:opacity-40"
+                onClick={submit}
+                disabled={recordMutation.isPending}
+                className="flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
               >
-                {recordMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Enregistrement...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    <span>Enregistrer l'appel</span>
-                  </>
-                )}
+                <Save className="h-4 w-4" />
+                {recordMutation.isPending ? 'Enregistrement…' : "Enregistrer l'appel"}
               </button>
             </div>
-          </>
-        )}
-      </div>
+
+            <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-xl">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr>
+                    <th className="px-6 py-3">Élève</th>
+                    <th className="px-6 py-3 text-center">Statut</th>
+                    <th className="px-6 py-3 text-center">Justifiée</th>
+                    <th className="px-6 py-3">Motif</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {rows.map((row) => (
+                    <tr
+                      key={row.enrollmentId}
+                      className={row.status ? 'bg-slate-50/60' : ''}
+                    >
+                      <td className="px-6 py-3 font-medium text-slate-800">
+                        {row.lastName} {row.firstName}
+                      </td>
+
+                      <td className="px-6 py-3">
+                        <div className="flex justify-center gap-1">
+                          <StatusButton
+                            label="Présent"
+                            active={row.status === null}
+                            tone="bg-emerald-600"
+                            onClick={() =>
+                              patch(row.enrollmentId, {
+                                status: null,
+                                isJustified: false,
+                                reason: '',
+                              })
+                            }
+                          />
+                          <StatusButton
+                            label={ABSENCE_STATUS_LABELS[AbsenceStatus.ABSENT]}
+                            active={row.status === AbsenceStatus.ABSENT}
+                            tone="bg-red-600"
+                            onClick={() =>
+                              patch(row.enrollmentId, {
+                                status: AbsenceStatus.ABSENT,
+                              })
+                            }
+                          />
+                          <StatusButton
+                            label={ABSENCE_STATUS_LABELS[AbsenceStatus.LATE]}
+                            active={row.status === AbsenceStatus.LATE}
+                            tone="bg-amber-600"
+                            onClick={() =>
+                              patch(row.enrollmentId, {
+                                status: AbsenceStatus.LATE,
+                              })
+                            }
+                          />
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={row.isJustified}
+                          disabled={row.status === null}
+                          onChange={(e) =>
+                            patch(row.enrollmentId, {
+                              isJustified: e.target.checked,
+                            })
+                          }
+                          className="h-4 w-4 accent-emerald-600 disabled:opacity-30"
+                        />
+                      </td>
+
+                      <td className="px-6 py-3">
+                        <input
+                          value={row.reason}
+                          disabled={row.status === null}
+                          placeholder={row.status ? 'Motif…' : ''}
+                          onChange={(e) =>
+                            patch(row.enrollmentId, { reason: e.target.value })
+                          }
+                          className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs disabled:bg-slate-50"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </QueryPanel>
+      </QueryPanel>
     </div>
   );
 };
 
-/* ─── Bouton d'une demi-journée : présent / absent / justifié ────── */
-const HalfDayToggle: React.FC<{
+const StatusButton: React.FC<{
   label: string;
-  icon: React.ReactNode;
-  state: HalfDayState;
-  onToggle: () => void;
-  onJustify: () => void;
-}> = ({ label, icon, state, onToggle, onJustify }) => (
-  <div className="flex items-center gap-1 w-24">
-    <button
-      type="button"
-      onClick={onToggle}
-      title={`${label} — ${state.absent ? 'absent' : 'présent'}`}
-      className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-bold transition-all ${
-        state.absent
-          ? 'bg-red-500 text-white'
-          : 'bg-slate-100 hover:bg-slate-200 text-slate-400'
-      }`}
-    >
-      {icon}
-      <span className="sm:hidden">{label}</span>
-    </button>
-    {state.absent && (
-      <button
-        type="button"
-        onClick={onJustify}
-        title={state.isJustified ? 'Justifiée' : 'Non justifiée'}
-        className={`px-1.5 py-2 rounded-lg text-[10px] font-black transition-all ${
-          state.isJustified
-            ? 'bg-emerald-500 text-white'
-            : 'bg-slate-200 hover:bg-slate-300 text-slate-500'
-        }`}
-      >
-        J
-      </button>
-    )}
-  </div>
+  active: boolean;
+  tone: string;
+  onClick: () => void;
+}> = ({ label, active, tone, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+      active ? `${tone} text-white shadow-sm` : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+    }`}
+  >
+    {label}
+  </button>
 );

@@ -24,6 +24,7 @@ import {
   ArrowRightLeft,
   CalendarClock,
   HeartHandshake,
+  CalendarCheck,
 } from "lucide-react";
 import { useCreateUser } from "../hooks/useUsers";
 import {
@@ -44,6 +45,7 @@ import { SubjectsManager } from "../components/SubjectsManager";
 import { TeachingManager } from "../components/TeachingManager";
 import { AuditLogTable } from "../components/AuditLogTable";
 import { ParentsManager } from "../components/ParentsManager";
+import { AbsencesOverview } from "../components/AbsencesOverview";
 import { StudentsExplorer } from "../components/StudentsExplorer";
 import { TransfersManager } from "../components/TransfersManager";
 import { ScheduleManager } from "../components/ScheduleManager";
@@ -60,6 +62,7 @@ type Tab =
   | "edt"
   | "personnel"
   | "parents"
+  | "assiduite"
   | "annee"
   | "classe"
   | "matieres"
@@ -178,6 +181,13 @@ export const DirectionPage: React.FC = () => {
           color="bg-teal-600"
         />
         <TabButton
+          active={activeTab === "assiduite"}
+          onClick={() => setActiveTab("assiduite")}
+          icon={<CalendarCheck className="w-4 h-4" />}
+          label="Assiduité"
+          color="bg-cyan-600"
+        />
+        <TabButton
           active={activeTab === "parents"}
           onClick={() => setActiveTab("parents")}
           icon={<HeartHandshake className="w-4 h-4" />}
@@ -198,6 +208,7 @@ export const DirectionPage: React.FC = () => {
       {activeTab === "eleves" && <StudentsExplorer />}
       {activeTab === "transferts" && <TransfersManager />}
       {activeTab === "parents" && <ParentsManager />}
+      {activeTab === "assiduite" && <AbsencesOverview />}
       {activeTab === "personnel" && (
         <div className="space-y-6">
           <PersonnelTab />

@@ -8,8 +8,8 @@ import {
   Wallet,
 } from 'lucide-react';
 import {
+  AbsenceStatus,
   ENROLLMENT_STATUS_LABELS,
-  HalfDay,
   PAYMENT_METHOD_LABELS,
   type HistoryEnrollment,
   type StudentFile,
@@ -22,11 +22,6 @@ const formatFcfa = (value: number) => `${Number(value).toLocaleString('fr-FR')} 
 
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString('fr-FR') : '—';
-
-const HALF_DAY_LABELS: Record<HalfDay, string> = {
-  [HalfDay.MORNING]: 'Matin',
-  [HalfDay.AFTERNOON]: 'Après-midi',
-};
 
 interface Props {
   studentId: string;
@@ -401,7 +396,17 @@ const YearDetail: React.FC<{ enrollment: HistoryEnrollment }> = ({ enrollment })
               {enrollment.absences.map((a) => (
                 <li key={a.id} className="flex flex-wrap items-center gap-x-3 text-xs">
                   <span className="font-mono text-slate-600">{formatDate(a.date)}</span>
-                  <span className="text-slate-500">{HALF_DAY_LABELS[a.halfDay]}</span>
+                  {/* La matière remplace la demi-journée : l'assiduité est
+                      désormais relevée cours par cours. */}
+                  <span className="text-slate-500">
+                    {a.subjectName ?? '—'}
+                    {a.timeSlotLabel ? ` · ${a.timeSlotLabel}` : ''}
+                  </span>
+                  {a.status === AbsenceStatus.LATE && (
+                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
+                      RETARD
+                    </span>
+                  )}
                   <span
                     className={`font-semibold ${
                       a.isJustified ? 'text-emerald-600' : 'text-red-600'

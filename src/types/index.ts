@@ -265,14 +265,37 @@ export interface GradeSheet {
   students: GradeSheetRow[];
 }
 
-export enum HalfDay {
-  MORNING = 'MORNING',
-  AFTERNOON = 'AFTERNOON',
+/**
+ * Ce qui est constaté pour un élève sur une séance. « Présent » n'est pas une
+ * valeur : c'est l'absence de ligne.
+ */
+export enum AbsenceStatus {
+  ABSENT = 'ABSENT',
+  LATE = 'LATE',
 }
 
-/** Statut d'un élève sur une demi-journée. `null` = présent. */
+export const ABSENCE_STATUS_LABELS: Record<AbsenceStatus, string> = {
+  [AbsenceStatus.ABSENT]: 'Absent',
+  [AbsenceStatus.LATE]: 'En retard',
+};
+
+/** Séance de l'emploi du temps qu'un enseignant peut appeler. */
+export interface TeachingSession {
+  scheduleEntryId: string;
+  classRoomId: string;
+  classRoomName: string;
+  subjectId: string;
+  subjectName: string;
+  timeSlotLabel: string;
+  startTime: string;
+  endTime: string;
+  sequence: number;
+}
+
+/** Statut d'un élève sur la séance appelée. `null` = présent. */
 export interface AbsenceMark {
   id: string;
+  status: AbsenceStatus;
   isJustified: boolean;
   reason: string | null;
 }
@@ -282,13 +305,44 @@ export interface RollCallRow {
   studentId: string;
   firstName: string;
   lastName: string;
-  morning: AbsenceMark | null;
-  afternoon: AbsenceMark | null;
+  mark: AbsenceMark | null;
 }
 
 export interface RollCall {
   date: string;
+  session: {
+    scheduleEntryId: string;
+    classRoomName: string;
+    subjectName: string;
+    timeSlotLabel: string;
+    startTime: string;
+    endTime: string;
+  };
   students: RollCallRow[];
+}
+
+/** Ligne du suivi d'assiduité de la direction : un élève dans une matière. */
+export interface AbsenceOverviewRow {
+  enrollmentId: string;
+  lastName: string;
+  firstName: string;
+  classRoomId: string;
+  classRoomName: string;
+  subjectId: string;
+  subjectName: string;
+  unjustified: number;
+  justified: number;
+  late: number;
+}
+
+/** Élève dépassant le seuil d'absences non justifiées. */
+export interface AbsenceAtRiskRow {
+  enrollmentId: string;
+  lastName: string;
+  firstName: string;
+  classRoomName: string;
+  unjustified: number;
+  subjects: string[];
 }
 
 /* ─── Bulletins ──────────────────────────────────────────────────── */
@@ -419,7 +473,10 @@ export interface HistoryPayment {
 export interface HistoryAbsence {
   id: string;
   date: string;
-  halfDay: HalfDay;
+  status: AbsenceStatus;
+  /** Matière du cours manqué — l'assiduité est relevée par séance. */
+  subjectName: string | null;
+  timeSlotLabel: string | null;
   isJustified: boolean;
   reason: string | null;
 }

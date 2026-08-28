@@ -576,7 +576,9 @@ const AbsencesPanel: React.FC<{ enrollmentId: string }> = ({ enrollmentId }) => 
                   {new Date(a.date).toLocaleDateString('fr-FR')}
                 </td>
                 <td className="px-6 py-3 text-slate-500">
-                  {a.halfDay === 'MORNING' ? 'Matin' : 'Après-midi'}
+                  {/* Le cours manqué, plutôt que la demi-journée. */}
+                  {a.subjectName ?? '—'}
+                  {a.timeSlotLabel ? ` · ${a.timeSlotLabel}` : ''}
                 </td>
                 <td className="px-6 py-3">
                   <span
